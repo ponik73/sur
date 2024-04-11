@@ -1,3 +1,4 @@
 src/img/.venv/
 .DS_Store
 __pycache__/
+/src/data
