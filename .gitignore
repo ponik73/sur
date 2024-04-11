@@ -1,3 +1,5 @@
 src/img/.venv/
 .DS_Store
 __pycache__/
+*.keras
+src/img/data/

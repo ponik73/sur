@@ -1,33 +1,90 @@
 import os
 import pandas as pd
-from model import trainModel
-from dataPreprocess import loadData, preprocessData
+import numpy as np
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import load_model
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, Input
+import cv2
 
-PATH_TARGET_TRAIN = "../data/target_train"
-PATH_TARGET_DEV = "../data/target_dev"
-PATH_NON_TARGET_TRAIN = "../data/non_target_train"
-PATH_NON_TARGET_DEV = "../data/non_target_dev"
-IMG_WIDTH = IMG_HEIGHT = 224
 PATH_MODEL = "one_person_detector.keras"
-EPOCHS = 11
+EPOCHS = 20
 BATCH_SIZE = 20
-LEARNING_RATE = 0.0023856
-PATH_EVAL = "eval"
+IMG_SIZE = 80
+PATH_EVAL = "miso"
 PATH_OUTPUT = "../image_nn.txt"
 
-if __name__ == "__main__":
-  trainData, validationData = preprocessData(PATH_TARGET_TRAIN, PATH_TARGET_DEV, PATH_NON_TARGET_TRAIN, PATH_NON_TARGET_DEV, IMG_WIDTH, IMG_HEIGHT)
+def loadEval(path, imgSize):
+    images = []
 
+    allFiles = os.listdir(path)
+    imgFiles = [f for f in allFiles if f.endswith(".png")]
+
+    for filename in imgFiles:
+        img = cv2.imread(os.path.join(path, filename))
+        img = cv2.resize(img, (imgSize, imgSize))
+        img = img.astype("float32") / 255.0
+        images.append(img)
+
+    return np.array(images), imgFiles
+
+def loadData(batchSize, imgSize):
+    datagen = ImageDataGenerator(rescale=1./255)
+
+    train_generator = datagen.flow_from_directory(
+            'data/train', 
+            target_size=(imgSize, imgSize),
+            batch_size=batchSize,
+            class_mode='binary')
+
+    validation_generator = datagen.flow_from_directory(
+            'data/validation',
+            target_size=(imgSize, imgSize),
+            batch_size=batchSize,
+            class_mode='binary')
+    
+    return train_generator, validation_generator
+
+def trainModel(trainData, validationData, imgSize, epochs, batchSize):
+    model = Sequential([
+      Input((imgSize, imgSize, 3)),
+
+      Conv2D(32, (3, 3), activation="relu"),
+      MaxPooling2D((2, 2)),
+
+      Conv2D(32, (3, 3), activation="relu"), ##
+      MaxPooling2D((2, 2)),
+
+      Conv2D(64, (3, 3), activation="relu"),
+      MaxPooling2D((2, 2)),
+
+      Flatten(),
+      Dense(64, activation="relu"),
+      Dropout(0.5),
+      Dense(1, activation="sigmoid")
+    ])
+
+    model.compile(loss="binary_crossentropy", optimizer='rmsprop', metrics=["accuracy"])
+    model.fit(
+      trainData,
+      # steps_per_epoch=nb_train_samples // batch_size,
+      epochs=epochs,
+      validation_data=validationData)#,
+      # validation_steps=nb_validation_samples // batch_size)
+    model.save("one_person_detector.keras")
+
+    return model
+
+
+if __name__ == "__main__":
   if os.path.isfile(PATH_MODEL):
     model = load_model(PATH_MODEL)
   else:
-    model = trainModel(trainData, validationData, IMG_HEIGHT, IMG_WIDTH, EPOCHS, BATCH_SIZE, LEARNING_RATE)
+    trainGen, validationGen = loadData(BATCH_SIZE, IMG_SIZE)
+    model = trainModel(trainGen, validationGen, IMG_SIZE, EPOCHS, BATCH_SIZE)
+  
+  evalData, filenames = loadEval(PATH_EVAL, IMG_SIZE)
 
-  # print(model.summary())
-
-  # Load eval data and filenames
-  evalData, filenames = loadData(PATH_EVAL, None, IMG_WIDTH, IMG_HEIGHT, eval=True)
   df = pd.DataFrame(filenames, columns=["filename"])
   df["filename"] = df["filename"].apply(lambda x: x[:-4])
 
