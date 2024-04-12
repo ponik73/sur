@@ -4,15 +4,27 @@ import scipy.linalg
 import numpy as np
 from numpy.random import randint
 
-EVAL_DIRECTORY = True
+EVAL_DIRECTORY = False
+
+def get_file_name_from_path(path):
+    # Get the last part after last slash
+    last_part = path.split("/")[-1]
+
+    # Remove the file extension
+    file_name = last_part.split(".")[0]
+
+    return file_name
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
 
 train_target = wav16khz2mfcc('../data/target_train').values()
 train_non_target = wav16khz2mfcc('../data/non_target_train').values()
 test_target = wav16khz2mfcc('../data/target_dev')
 test_non_target = wav16khz2mfcc('../data/non_target_dev')
 
-test_target_keys = test_target.keys()
-test_non_target_keys = test_non_target.keys()
+test_target_keys = list(test_target.keys())
+test_non_target_keys = list(test_non_target.keys())
 
 test_target = test_target.values()
 test_non_target = test_non_target.values()
@@ -29,18 +41,18 @@ cov_tot = np.cov(np.vstack([train_target, train_non_target]).T, bias=True)
 # take just 2 largest eigenvalues and corresponding eigenvectors
 d, e = scipy.linalg.eigh(cov_tot, subset_by_index=(dim-2, dim-1))
 
-train_target_pca = train_target.dot(e)
-train_non_target_pca = train_non_target.dot(e)
+# train_target_pca = train_target.dot(e)
+# train_non_target_pca = train_non_target.dot(e)
 # plt.plot(train_target_pca[:,1], train_target_pca[:,0], 'b.', ms=1)
 # plt.plot(train_non_target_pca[:,1], train_non_target_pca[:,0], 'r.', ms=1)
 # plt.show()
 
 # LDA reduction to 1 dimenzion (only one LDA dimensionis available for 2 classes)
-n_target = len(train_target)
-n_non_target = len(train_non_target)
-cov_wc = (n_target*np.cov(train_target.T, bias=True) + n_non_target*np.cov(train_non_target.T, bias=True)) / (n_target + n_non_target)
-cov_ac = cov_tot - cov_wc
-d, e = scipy.linalg.eigh(cov_ac, cov_wc, subset_by_index=(dim-1, dim-1))
+# n_target = len(train_target)
+# n_non_target = len(train_non_target)
+# cov_wc = (n_target*np.cov(train_target.T, bias=True) + n_non_target*np.cov(train_non_target.T, bias=True)) / (n_target + n_non_target)
+# cov_ac = cov_tot - cov_wc
+# d, e = scipy.linalg.eigh(cov_ac, cov_wc, subset_by_index=(dim-1, dim-1))
 # plt.figure()
 # junk = plt.hist(train_target.dot(e), 40, histtype='step', color='b', density=True)
 # junk = plt.hist(train_non_target.dot(e), 40, histtype='step', color='r', density=True)
@@ -55,8 +67,8 @@ P_non_target = 1 - P_target
 # with two models, one trained using target and second using non target training data.
 # In this case, the models are single gaussians with diagonal covariance matrices.
 
-ll_target = logpdf_gauss(test_target[0], np.mean(train_target, axis=0), np.var(train_target, axis=0))
-ll_non_target = logpdf_gauss(test_target[0], np.mean(train_non_target, axis=0), np.var(train_non_target, axis=0))
+# ll_target = logpdf_gauss(test_target[0], np.mean(train_target, axis=0), np.var(train_target, axis=0))
+# ll_non_target = logpdf_gauss(test_target[0], np.mean(train_non_target, axis=0), np.var(train_non_target, axis=0))
 
 # Plot the frame-by-frame likelihoods obtained with two models; Note that
 # 'll_target' and ''ll_non_target' are log likelihoods, so we need to use
@@ -67,7 +79,7 @@ ll_non_target = logpdf_gauss(test_target[0], np.mean(train_non_target, axis=0), 
 # plt.show()
 
 # Plot frame-by-frame posteriors
-posterior_target = np.exp(ll_target) * P_target / (np.exp(ll_target)*P_target + np.exp(ll_non_target)*P_non_target)
+# posterior_target = np.exp(ll_target) * P_target / (np.exp(ll_target)*P_target + np.exp(ll_non_target)*P_non_target)
 # Alternatively the posterior can by computed using log odds ratio and logistic sigmoid function as:
 # posterior_m = logistic_sigmoid(ll_target - ll_non_target + log(P_target/P_non_target))
 # plt.figure()
@@ -94,7 +106,7 @@ ll_target = logpdf_gauss(test_target[0], *train_gauss(train_target))
 ll_non_target = logpdf_gauss(test_target[0], *train_gauss(train_non_target))
 # '*' before 'train_gauss' passes both return values (mean and cov) as parameters of 'logpdf_gauss'
 
-posterior_target = np.exp(ll_target)*P_target /(np.exp(ll_target) * P_target + np.exp(ll_non_target) * P_non_target)
+# posterior_target = np.exp(ll_target)*P_target /(np.exp(ll_target) * P_target + np.exp(ll_non_target) * P_non_target)
 # plt.figure(); plt.plot(posterior_target, 'g'); plt.plot(1-posterior_target, 'r')
 # plt.figure(); plt.plot(ll_target, 'g'); plt.plot(ll_non_target, 'r')
 # plt.show()
@@ -155,7 +167,9 @@ if EVAL_DIRECTORY:
     correct = 0
     wrong = 0
     print('Test eval:')
-    for tst in test_target:
+    for i in range(len(test_target)):
+        print(get_file_name_from_path(test_target_keys[i]), end=' ')
+        tst = test_target[i]
         ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
         ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
 
@@ -163,18 +177,25 @@ if EVAL_DIRECTORY:
         log_odds_ratio = ll_target - ll_non_target
 
         # Apply sigmoid function to get probability score
-        probability_score = 1 / (1 + np.exp(-log_odds_ratio))
+        probability_score = sigmoid(log_odds_ratio)
 
         # Aggregate probabilities across frames
         final_probability_score = np.mean(probability_score)    # Average probability
+        print("{:.2f}".format(final_probability_score), end=' ')
 
         # Interpretation
         if final_probability_score >= 0.5:
-            correct += 1
+            # correct += 1
+            print('1')
         else:
-            wrong += 1
+            # wrong += 1
+            print('0')
 
-    for tst in test_non_target:
+    print()
+
+    for i in range(len(test_non_target)):
+        print(get_file_name_from_path(test_non_target_keys[i]), end=' ')
+        tst = test_non_target[i]
         ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
         ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
 
@@ -182,79 +203,94 @@ if EVAL_DIRECTORY:
         log_odds_ratio = ll_target - ll_non_target
 
         # Apply sigmoid function to get probability score
-        probability_score = 1 / (1 + np.exp(-log_odds_ratio))
+        probability_score = sigmoid(log_odds_ratio)
 
         # Aggregate probabilities across frames
         final_probability_score = np.mean(probability_score)    # Average probability
+        print("{:.2f}".format(final_probability_score), end=' ')
 
         # Interpretation
         if final_probability_score >= 0.5:
-            wrong += 1
+            # wrong += 1
+            print('1')
         else:
-            correct += 1
+            # correct += 1
+            print('0')
     
-    print("Correctness: {:.2f}%".format(correct / (correct + wrong) * 100))
+    # print("Correctness: {:.2f}%".format(correct / (correct + wrong) * 100))
 else:
     # Now run recognition for all target test utterances
     # To do the same for non target set "test_set=test_non_target"
     correct = 0
     wrong = 0
-    print('Test target:')
-    score=[]
-    for tst in test_target:
+    score_probability_border = 0.5
+    # score=[]
+    for i in range(len(test_target)):
+        print(get_file_name_from_path(test_target_keys[i]), end=' ')
+        tst = test_target[i]
         ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
         ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
+        score = sum(ll_target) + np.log(P_target) - (sum(ll_non_target) + np.log(P_non_target))
         # score.append((sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target)))
 
         # Compute log-odds ratio
-        log_odds_ratio = ll_target - ll_non_target
+        # log_odds_ratio = ll_target - ll_non_target
 
         # Apply sigmoid function to get probability score
-        probability_score = 1 / (1 + np.exp(-log_odds_ratio))
+        # probability_score = sigmoid(log_odds_ratio)
+        # probability_score = sigmoid(score)
 
         # Aggregate probabilities across frames
-        final_probability_score = np.mean(probability_score)    # Average probability
+        # final_probability_score = np.mean(probability_score)    # Average probability
+        # final_probability_score = np.max(probability_score)    # Max probability
+        # print("{:.2f}".format(final_probability_score), end=' ')
+        print("{:.4f}".format(score), end=' ')
 
         # Interpretation
-        if final_probability_score >= 0.5:
-            # print("The model predicts that the .wav file is from the target person with a confidence of {:.2f}%".format(final_probability_score*100))
-            # print("CORRECT - confidence that it is micheal {:.2f}%".format(final_probability_score*100))
+        # if final_probability_score >= score_probability_border:
+        if score > 0:
             correct += 1
+            print('1')
         else:
-            # print("The model predicts that the .wav file is not from the target person with a confidence of {:.2f}%".format((1 - final_probability_score)*100))
-            # print("WRONG - confidence that it is michael {:.2f}%".format(final_probability_score*100))
             wrong += 1
+            print('0')
+    print()
+    correctness_target = correct / (correct + wrong) * 100
     # print(score)
-    print("Correctness: {:.2f}%".format(correct / (correct + wrong) * 100))
 
     correct = 0
     wrong = 0
-    print()
-    print('Test non target:')
-    score=[]
-    for tst in test_non_target:
+    # score=[]
+    for i in range(len(test_non_target)):
+        print(get_file_name_from_path(test_non_target_keys[i]), end=' ')
+        tst = test_non_target[i]
         ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
         ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
-        # score.append((sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target)))
+        score = sum(ll_target) + np.log(P_target) - (sum(ll_non_target) + np.log(P_non_target))
 
         # Compute log-odds ratio
-        log_odds_ratio = ll_target - ll_non_target
+        # log_odds_ratio = ll_target - ll_non_target
 
         # Apply sigmoid function to get probability score
-        probability_score = 1 / (1 + np.exp(-log_odds_ratio))
+        # probability_score = sigmoid(log_odds_ratio)
+        # probability_score = sigmoid(score)
 
         # Aggregate probabilities across frames
-        final_probability_score = np.mean(probability_score)    # Average probability
+        # final_probability_score = np.mean(probability_score)    # Average probability
+        # final_probability_score = np.max(probability_score)    # Max probability
+        # print("{:.2f}".format(final_probability_score), end=' ')
+        print("{:.4f}".format(score), end=' ')
 
         # Interpretation
-        if final_probability_score >= 0.5:
-            # print("The model predicts that the .wav file is from the target person with a confidence of {:.2f}%".format(final_probability_score*100))
-            # print("WRONG - confidence that it is michael {:.2f}%".format(final_probability_score*100))
+        # if final_probability_score >= score_probability_border:
+        if score > 0.0:
             wrong += 1
+            print('1')
         else:
-            # print("The model predicts that the .wav file is not from the target person with a confidence of {:.2f}%".format((1 - final_probability_score)*100))
-            # print("CORRECT - confidence that it is micheal {:.2f}%".format(final_probability_score*100))
             correct += 1
+            print('0')
 
-    print("Correctness: {:.2f}%".format(correct / (correct + wrong) * 100))
+    print()
+    print("Correctness of target: {:.2f}%".format(correctness_target))
+    print("Correctness of non-target: {:.2f}%".format(correct / (correct + wrong) * 100))
     # print(score)
