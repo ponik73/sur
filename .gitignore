@@ -4,3 +4,4 @@ __pycache__/
 /src/data/
 /src/img/data
 *.keras
+src/speech/speech_backup.py
