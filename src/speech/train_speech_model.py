@@ -23,6 +23,16 @@ def load_file(path):
 def calculate_test_score(ll_target, P_target, ll_non_target, P_non_target):
     return (sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target))
 
+def evaluate_test_data(test_data, 
+                       Ws_target, MUs_target, COVs_target, P_target, 
+                       Ws_non_target, MUs_non_target, COVs_non_target, P_non_target):
+    score=[]
+    for i in range(len(test_data)):
+        tst = test_data[i]
+        ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
+        ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
+        score.append(calculate_test_score(ll_target, P_target, ll_non_target, P_non_target))
+
 def simulate_run(score_borders, iterations):
     _, train_target = load_file('../data/target_train')
     _, train_non_target = load_file('../data/non_target_train')
@@ -72,22 +82,12 @@ def simulate_run(score_borders, iterations):
                 # print('Iteration:', jj, ' Total log-likelihoods:', TTL_target, 'for target;', TTL_non_target, 'for non targets.')
 
             # Now run recognition for all target test utterances
-            score=[]
-            for i in range(len(test_target)):
-                tst = test_target[i]
-                ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
-                ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
-                score.append(calculate_test_score(ll_target, P_target, ll_non_target, P_non_target))
+            score = evaluate_test_data(test_target, Ws_target, MUs_target, COVs_target, P_target, Ws_non_target, MUs_non_target, COVs_non_target, P_non_target)
             correct = sum(1 for s in score if s > border)
             total = len(score)
             correctness_target = (correct / total) * 100
 
-            score=[]
-            for i in range(len(test_non_target)):
-                tst = test_non_target[i]
-                ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
-                ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
-                score.append(calculate_test_score(ll_target, P_target, ll_non_target, P_non_target))
+            score = evaluate_test_data(test_non_target, Ws_target, MUs_target, COVs_target, P_target, Ws_non_target, MUs_non_target, COVs_non_target, P_non_target)
             correct = sum(1 for s in score if s < border)
             total = len(score)
             correctness_non_target = (correct / total) * 100
