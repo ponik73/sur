@@ -7,12 +7,12 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, Input
 import cv2
 
-PATH_MODEL = "one_person_detector.keras"
 EPOCHS = 20
 BATCH_SIZE = 20
 IMG_SIZE = 80
-PATH_EVAL = "miso"
-PATH_OUTPUT = "../image_nn.txt"
+PATH_EVAL = "eval"
+PATH_MODEL = "one_person_detector.keras"
+PATH_OUTPUT = "../predictions/image_nn.txt"
 
 def loadEval(path, imgSize):
     images = []
@@ -75,15 +75,14 @@ def trainModel(trainData, validationData, imgSize, epochs, batchSize):
 
     return model
 
-
-if __name__ == "__main__":
-  if os.path.isfile(PATH_MODEL):
-    model = load_model(PATH_MODEL)
+def evaluate(pathModel, pathEval):
+  if os.path.isfile(pathModel):
+    model = load_model(pathModel)
   else:
     trainGen, validationGen = loadData(BATCH_SIZE, IMG_SIZE)
     model = trainModel(trainGen, validationGen, IMG_SIZE, EPOCHS, BATCH_SIZE)
   
-  evalData, filenames = loadEval(PATH_EVAL, IMG_SIZE)
+  evalData, filenames = loadEval(pathEval, IMG_SIZE)
 
   df = pd.DataFrame(filenames, columns=["filename"])
   df["filename"] = df["filename"].apply(lambda x: x[:-4])
@@ -91,6 +90,12 @@ if __name__ == "__main__":
   df["softPrediction"] = model.predict(evalData)
   df["softPrediction"] = df["softPrediction"].apply(lambda x: round(x, 3))
   df["hardPrediction"] = df["softPrediction"].apply(lambda x: 1 if x > 0.5 else 0)
+
+  return df
+
+if __name__ == "__main__":
+  
+  df = evaluate(PATH_MODEL, PATH_EVAL)  
 
   with open(PATH_OUTPUT, "wb") as f:
     for _, row in df.iterrows():
