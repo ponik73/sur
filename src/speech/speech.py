@@ -4,8 +4,6 @@ import scipy.linalg
 import numpy as np
 from numpy.random import randint
 
-EVAL_DIRECTORY = False
-
 def get_file_name_from_path(path):
     # Get the last part after last slash
     last_part = path.split("/")[-1]
@@ -18,279 +16,101 @@ def get_file_name_from_path(path):
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
-train_target = wav16khz2mfcc('../data/target_train').values()
-train_non_target = wav16khz2mfcc('../data/non_target_train').values()
-test_target = wav16khz2mfcc('../data/target_dev')
-test_non_target = wav16khz2mfcc('../data/non_target_dev')
+def load_file(path):
+    res_dict = wav16khz2mfcc(path)
+    return list(res_dict.keys()), list(res_dict.values())
 
-test_target_keys = list(test_target.keys())
-test_non_target_keys = list(test_non_target.keys())
+def calculate_test_score(ll_target, P_target, ll_non_target, P_non_target):
+    return (sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target))
 
-test_target = test_target.values()
-test_non_target = test_non_target.values()
+def simulate_run(score_borders, iterations):
+    _, train_target = load_file('../data/target_train')
+    _, train_non_target = load_file('../data/non_target_train')
+    test_target_keys, test_target = load_file('../data/target_dev')
+    test_non_target_keys, test_non_target = load_file('../data/non_target_dev')
 
-train_target = np.vstack(list(train_target))
-train_non_target = np.vstack(list(train_non_target))
-test_target = list(test_target)
-test_non_target = list(test_non_target)
-dim = train_target.shape[1]
+    train_target = np.vstack(train_target)
+    train_non_target = np.vstack(train_non_target)
+    test_target = test_target
+    test_non_target = test_non_target
 
-# PCA reduction to 2 dimensions
+    # Define uniform a-priori probabilities of classes:
+    P_target = 0.5
+    P_non_target = 1 - P_target
 
-cov_tot = np.cov(np.vstack([train_target, train_non_target]).T, bias=True)
-# take just 2 largest eigenvalues and corresponding eigenvectors
-d, e = scipy.linalg.eigh(cov_tot, subset_by_index=(dim-2, dim-1))
+    # Train and test with GMM models with diagonal covariance matrices
+    # Decide for number of gaussian mixture components used for the target and non target models
+    M_target = 5
+    M_non_target = 5
 
-# train_target_pca = train_target.dot(e)
-# train_non_target_pca = train_non_target.dot(e)
-# plt.plot(train_target_pca[:,1], train_target_pca[:,0], 'b.', ms=1)
-# plt.plot(train_non_target_pca[:,1], train_non_target_pca[:,0], 'r.', ms=1)
-# plt.show()
+    # Initialize all variance vectors (diagonals of the full covariance matrices) to
+    # the same variance vector computed using all the data from the given class
+    COVs_target = [np.var(train_target, axis=0)] * M_target
+    COVs_non_target = [np.var(train_non_target, axis=0)] * M_non_target
 
-# LDA reduction to 1 dimenzion (only one LDA dimensionis available for 2 classes)
-# n_target = len(train_target)
-# n_non_target = len(train_non_target)
-# cov_wc = (n_target*np.cov(train_target.T, bias=True) + n_non_target*np.cov(train_non_target.T, bias=True)) / (n_target + n_non_target)
-# cov_ac = cov_tot - cov_wc
-# d, e = scipy.linalg.eigh(cov_ac, cov_wc, subset_by_index=(dim-1, dim-1))
-# plt.figure()
-# junk = plt.hist(train_target.dot(e), 40, histtype='step', color='b', density=True)
-# junk = plt.hist(train_non_target.dot(e), 40, histtype='step', color='r', density=True)
-# plt.show()
-# Distribution in this single dimensional space are reasonable separated
+    # Use uniform distribution as initial guess for the weights
+    Ws_target = np.ones(M_target) / M_target
+    Ws_non_target = np.ones(M_non_target) / M_non_target
 
-# Lets define uniform a-priori probabilities of classes:
-P_target = 0.5
-P_non_target = 1 - P_target
+    for border in score_borders:
+        print("Score border:",border)
+        crc_targets=[]
+        crc_non_targets=[]
+        avg_crcs=[]
+        for iter in range(iterations):
+            # Initialize mean vectors, covariance matrices and weights of mixture components
+            # Initialize mean vectors to randomly selected data points from corresponding class
+            MUs_target = train_target[randint(1, len(train_target), M_target)]
 
-# For one target test utterance (test_target[0]), obtain frame-by-frame log-likelihoods
-# with two models, one trained using target and second using non target training data.
-# In this case, the models are single gaussians with diagonal covariance matrices.
+            # Initialize parameters of non target model
+            MUs_non_target = train_non_target[randint(1, len(train_non_target), M_non_target)]
 
-# ll_target = logpdf_gauss(test_target[0], np.mean(train_target, axis=0), np.var(train_target, axis=0))
-# ll_non_target = logpdf_gauss(test_target[0], np.mean(train_non_target, axis=0), np.var(train_non_target, axis=0))
+            # Run 50 iterations of EM agorithm to train the two GMMs from target and non target
+            for jj in range(50):
+                [Ws_target, MUs_target, COVs_target, TTL_target] = train_gmm(train_target, Ws_target, MUs_target, COVs_target)
+                [Ws_non_target, MUs_non_target, COVs_non_target, TTL_non_target] = train_gmm(train_non_target, Ws_non_target, MUs_non_target, COVs_non_target)
+                # print('Iteration:', jj, ' Total log-likelihoods:', TTL_target, 'for target;', TTL_non_target, 'for non targets.')
 
-# Plot the frame-by-frame likelihoods obtained with two models; Note that
-# 'll_target' and ''ll_non_target' are log likelihoods, so we need to use
-# exp function
-# plt.figure()
-# plt.plot(np.exp(ll_target), 'b')
-# plt.plot(np.exp(ll_non_target), 'r')
-# plt.show()
+            # Now run recognition for all target test utterances
+            score=[]
+            for i in range(len(test_target)):
+                tst = test_target[i]
+                ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
+                ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
+                score.append(calculate_test_score(ll_target, P_target, ll_non_target, P_non_target))
+            correct = sum(1 for s in score if s > border)
+            total = len(score)
+            correctness_target = (correct / total) * 100
 
-# Plot frame-by-frame posteriors
-# posterior_target = np.exp(ll_target) * P_target / (np.exp(ll_target)*P_target + np.exp(ll_non_target)*P_non_target)
-# Alternatively the posterior can by computed using log odds ratio and logistic sigmoid function as:
-# posterior_m = logistic_sigmoid(ll_target - ll_non_target + log(P_target/P_non_target))
-# plt.figure()
-# plt.plot(posterior_m, 'g')
-# plt.plot(1 - posterior_m, 'r')
-# plt.show()
+            score=[]
+            for i in range(len(test_non_target)):
+                tst = test_non_target[i]
+                ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
+                ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
+                score.append(calculate_test_score(ll_target, P_target, ll_non_target, P_non_target))
+            correct = sum(1 for s in score if s < border)
+            total = len(score)
+            correctness_non_target = (correct / total) * 100
 
-# Plot frame-by-frame log-likelihoods
-# plt.figure()
-# plt.plot(ll_target, 'g')
-# plt.plot(ll_non_target, 'r')
-# plt.show()
+            avg_correctness = (correctness_target + correctness_non_target) / 2
+            crc_targets.append(correctness_target)
+            crc_non_targets.append(correctness_non_target)
+            avg_crcs.append(avg_correctness)
+            print("Run:", iter+1, ", crc target: {:.2f}".format(correctness_target), ", crc non target: {:.2f}".format(correctness_non_target), ", avg crc: {:.2f}".format(avg_correctness))
 
-# But, we do not want to make frame-by-frame decisions. We want to recognize the
-# whole segment. Applying frame independeny assumption, we sum log-likelihoods.
-# We decide for class 'target' if the following quantity is positive.
-# result = (sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target))
-# print(result)
+        if iterations > 1:
+            print("Average target correctness: {:.2f}".format(np.mean(crc_targets)))
+            print("Average non target correctness: {:.2f}".format(np.mean(crc_non_targets)))
+            print("Average model correctness: {:.2f}".format(np.mean(avg_crcs)))
+        print()
 
-# Repeating the whole excercise, now with gaussian models with full covariance
-# matrices
+    return correctness_target, correctness_non_target
 
-ll_target = logpdf_gauss(test_target[0], *train_gauss(train_target))
-ll_non_target = logpdf_gauss(test_target[0], *train_gauss(train_non_target))
-# '*' before 'train_gauss' passes both return values (mean and cov) as parameters of 'logpdf_gauss'
+def main():
+    score_borders = [-200, 0, 200, 400, 600]
+    # score_borders = [400]
+    # Run n iterations of simulation to get distinct correctnesses
+    num_iterations = 10
+    simulate_run(score_borders, num_iterations)
 
-# posterior_target = np.exp(ll_target)*P_target /(np.exp(ll_target) * P_target + np.exp(ll_non_target) * P_non_target)
-# plt.figure(); plt.plot(posterior_target, 'g'); plt.plot(1-posterior_target, 'r')
-# plt.figure(); plt.plot(ll_target, 'g'); plt.plot(ll_non_target, 'r')
-# plt.show()
-# print((sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target))) 
-
-# Now run recognition for all target test utterances
-# To do the same for non target set "test_set=test_non_target"
-score=[]
-mean_target, cov_target = train_gauss(train_target)
-mean_non_target, cov_non_target = train_gauss(train_non_target)
-for tst in test_target:
-    ll_target = logpdf_gauss(tst, mean_target, cov_target)
-    ll_non_target = logpdf_gauss(tst, mean_non_target, cov_non_target)
-    score.append((sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target)))
-# print(score)
-
-# Run recogniction with 1-dimensional LDA projected data
-score=[]
-mean_target, cov_target = train_gauss(train_target.dot(e))
-mean_non_target, cov_non_target = train_gauss(train_non_target.dot(e))
-for tst in test_target:
-    ll_target = logpdf_gauss(tst.dot(e), mean_target, np.atleast_2d(cov_target))
-    ll_non_target = logpdf_gauss(tst.dot(e), mean_non_target, np.atleast_2d(cov_non_target))
-    score.append((sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target)))
-# print(score)
-
-# Train and test with GMM models with diagonal covariance matrices
-# Decide for number of gaussian mixture components used for the target model
-M_target = 5
-
-# Initialize mean vectors, covariance matrices and weights of mixture components
-# Initialize mean vectors to randomly selected data points from corresponding class
-MUs_target = train_target[randint(1, len(train_target), M_target)]
-
-# Initialize all variance vectors (diagonals of the full covariance matrices) to
-# the same variance vector computed using all the data from the given class
-COVs_target = [np.var(train_target, axis=0)] * M_target
-
-# Use uniform distribution as initial guess for the weights
-Ws_target = np.ones(M_target) / M_target
-
-# Initialize parameters of non target model
-M_non_target = 5
-MUs_non_target = train_non_target[randint(1, len(train_non_target), M_non_target)]
-COVs_non_target = [np.var(train_non_target, axis=0)] * M_non_target
-Ws_non_target = np.ones(M_non_target) / M_non_target
-
-# Run 30 iterations of EM agorithm to train the two GMMs from target and non target
-for jj in range(30):
-    # print('ws:', Ws_target)
-    # print('mus:',MUs_target)
-    # print('covs:',COVs_target)
-    [Ws_target, MUs_target, COVs_target, TTL_target] = train_gmm(train_target, Ws_target, MUs_target, COVs_target)
-    [Ws_non_target, MUs_non_target, COVs_non_target, TTL_non_target] = train_gmm(train_non_target, Ws_non_target, MUs_non_target, COVs_non_target)
-    # print('Iteration:', jj, ' Total log-likelihoods:', TTL_target, 'for target;', TTL_non_target, 'for non targets.')
-
-if EVAL_DIRECTORY:
-    correct = 0
-    wrong = 0
-    print('Test eval:')
-    for i in range(len(test_target)):
-        print(get_file_name_from_path(test_target_keys[i]), end=' ')
-        tst = test_target[i]
-        ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
-        ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
-
-        # Compute log-odds ratio
-        log_odds_ratio = ll_target - ll_non_target
-
-        # Apply sigmoid function to get probability score
-        probability_score = sigmoid(log_odds_ratio)
-
-        # Aggregate probabilities across frames
-        final_probability_score = np.mean(probability_score)    # Average probability
-        print("{:.2f}".format(final_probability_score), end=' ')
-
-        # Interpretation
-        if final_probability_score >= 0.5:
-            # correct += 1
-            print('1')
-        else:
-            # wrong += 1
-            print('0')
-
-    print()
-
-    for i in range(len(test_non_target)):
-        print(get_file_name_from_path(test_non_target_keys[i]), end=' ')
-        tst = test_non_target[i]
-        ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
-        ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
-
-        # Compute log-odds ratio
-        log_odds_ratio = ll_target - ll_non_target
-
-        # Apply sigmoid function to get probability score
-        probability_score = sigmoid(log_odds_ratio)
-
-        # Aggregate probabilities across frames
-        final_probability_score = np.mean(probability_score)    # Average probability
-        print("{:.2f}".format(final_probability_score), end=' ')
-
-        # Interpretation
-        if final_probability_score >= 0.5:
-            # wrong += 1
-            print('1')
-        else:
-            # correct += 1
-            print('0')
-    
-    # print("Correctness: {:.2f}%".format(correct / (correct + wrong) * 100))
-else:
-    # Now run recognition for all target test utterances
-    # To do the same for non target set "test_set=test_non_target"
-    correct = 0
-    wrong = 0
-    score_probability_border = 0.5
-    # score=[]
-    for i in range(len(test_target)):
-        print(get_file_name_from_path(test_target_keys[i]), end=' ')
-        tst = test_target[i]
-        ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
-        ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
-        score = sum(ll_target) + np.log(P_target) - (sum(ll_non_target) + np.log(P_non_target))
-        # score.append((sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target)))
-
-        # Compute log-odds ratio
-        # log_odds_ratio = ll_target - ll_non_target
-
-        # Apply sigmoid function to get probability score
-        # probability_score = sigmoid(log_odds_ratio)
-        # probability_score = sigmoid(score)
-
-        # Aggregate probabilities across frames
-        # final_probability_score = np.mean(probability_score)    # Average probability
-        # final_probability_score = np.max(probability_score)    # Max probability
-        # print("{:.2f}".format(final_probability_score), end=' ')
-        print("{:.4f}".format(score), end=' ')
-
-        # Interpretation
-        # if final_probability_score >= score_probability_border:
-        if score > 0:
-            correct += 1
-            print('1')
-        else:
-            wrong += 1
-            print('0')
-    print()
-    correctness_target = correct / (correct + wrong) * 100
-    # print(score)
-
-    correct = 0
-    wrong = 0
-    # score=[]
-    for i in range(len(test_non_target)):
-        print(get_file_name_from_path(test_non_target_keys[i]), end=' ')
-        tst = test_non_target[i]
-        ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
-        ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
-        score = sum(ll_target) + np.log(P_target) - (sum(ll_non_target) + np.log(P_non_target))
-
-        # Compute log-odds ratio
-        # log_odds_ratio = ll_target - ll_non_target
-
-        # Apply sigmoid function to get probability score
-        # probability_score = sigmoid(log_odds_ratio)
-        # probability_score = sigmoid(score)
-
-        # Aggregate probabilities across frames
-        # final_probability_score = np.mean(probability_score)    # Average probability
-        # final_probability_score = np.max(probability_score)    # Max probability
-        # print("{:.2f}".format(final_probability_score), end=' ')
-        print("{:.4f}".format(score), end=' ')
-
-        # Interpretation
-        # if final_probability_score >= score_probability_border:
-        if score > 0.0:
-            wrong += 1
-            print('1')
-        else:
-            correct += 1
-            print('0')
-
-    print()
-    print("Correctness of target: {:.2f}%".format(correctness_target))
-    print("Correctness of non-target: {:.2f}%".format(correct / (correct + wrong) * 100))
-    # print(score)
+main()
