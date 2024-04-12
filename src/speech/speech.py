@@ -4,14 +4,18 @@ import scipy.linalg
 import numpy as np
 from numpy.random import randint
 
+EVAL_DIRECTORY = True
+
 train_target = wav16khz2mfcc('../data/target_train').values()
 train_non_target = wav16khz2mfcc('../data/non_target_train').values()
-test_target = wav16khz2mfcc('../data/target_dev').values()
-test_non_target = wav16khz2mfcc('../data/non_target_dev').values()
+test_target = wav16khz2mfcc('../data/target_dev')
+test_non_target = wav16khz2mfcc('../data/non_target_dev')
 
-# print('Non target train:')
-# print(type(train_non_target))
-# print()
+test_target_keys = test_target.keys()
+test_non_target_keys = test_non_target.keys()
+
+test_target = test_target.values()
+test_non_target = test_non_target.values()
 
 train_target = np.vstack(list(train_target))
 train_non_target = np.vstack(list(train_non_target))
@@ -23,7 +27,7 @@ dim = train_target.shape[1]
 
 cov_tot = np.cov(np.vstack([train_target, train_non_target]).T, bias=True)
 # take just 2 largest eigenvalues and corresponding eigenvectors
-d, e = scipy.linalg.eigh(cov_tot, eigvals=(dim-2, dim-1))
+d, e = scipy.linalg.eigh(cov_tot, subset_by_index=(dim-2, dim-1))
 
 train_target_pca = train_target.dot(e)
 train_non_target_pca = train_non_target.dot(e)
@@ -36,7 +40,7 @@ n_target = len(train_target)
 n_non_target = len(train_non_target)
 cov_wc = (n_target*np.cov(train_target.T, bias=True) + n_non_target*np.cov(train_non_target.T, bias=True)) / (n_target + n_non_target)
 cov_ac = cov_tot - cov_wc
-d, e = scipy.linalg.eigh(cov_ac, cov_wc, eigvals=(dim-1, dim-1))
+d, e = scipy.linalg.eigh(cov_ac, cov_wc, subset_by_index=(dim-1, dim-1))
 # plt.figure()
 # junk = plt.hist(train_target.dot(e), 40, histtype='step', color='b', density=True)
 # junk = plt.hist(train_non_target.dot(e), 40, histtype='step', color='r', density=True)
@@ -80,8 +84,8 @@ posterior_target = np.exp(ll_target) * P_target / (np.exp(ll_target)*P_target + 
 # But, we do not want to make frame-by-frame decisions. We want to recognize the
 # whole segment. Applying frame independeny assumption, we sum log-likelihoods.
 # We decide for class 'target' if the following quantity is positive.
-result = (sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target))
-print(result)
+# result = (sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target))
+# print(result)
 
 # Repeating the whole excercise, now with gaussian models with full covariance
 # matrices
@@ -94,7 +98,7 @@ posterior_target = np.exp(ll_target)*P_target /(np.exp(ll_target) * P_target + n
 # plt.figure(); plt.plot(posterior_target, 'g'); plt.plot(1-posterior_target, 'r')
 # plt.figure(); plt.plot(ll_target, 'g'); plt.plot(ll_non_target, 'r')
 # plt.show()
-print((sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target))) 
+# print((sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target))) 
 
 # Now run recognition for all target test utterances
 # To do the same for non target set "test_set=test_non_target"
@@ -115,7 +119,7 @@ for tst in test_target:
     ll_target = logpdf_gauss(tst.dot(e), mean_target, np.atleast_2d(cov_target))
     ll_non_target = logpdf_gauss(tst.dot(e), mean_non_target, np.atleast_2d(cov_non_target))
     score.append((sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target)))
-print(score)
+# print(score)
 
 # Train and test with GMM models with diagonal covariance matrices
 # Decide for number of gaussian mixture components used for the target model
@@ -147,18 +151,110 @@ for jj in range(30):
     [Ws_non_target, MUs_non_target, COVs_non_target, TTL_non_target] = train_gmm(train_non_target, Ws_non_target, MUs_non_target, COVs_non_target)
     # print('Iteration:', jj, ' Total log-likelihoods:', TTL_target, 'for target;', TTL_non_target, 'for non targets.')
 
-# Now run recognition for all target test utterances
-# To do the same for non target set "test_set=test_non_target"
-score=[]
-for tst in test_target:
-    ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
-    ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
-    score.append((sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target)))
-print(score)
+if EVAL_DIRECTORY:
+    correct = 0
+    wrong = 0
+    print('Test eval:')
+    for tst in test_target:
+        ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
+        ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
 
-score=[]
-for tst in test_non_target:
-    ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
-    ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
-    score.append((sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target)))
-print(score)
+        # Compute log-odds ratio
+        log_odds_ratio = ll_target - ll_non_target
+
+        # Apply sigmoid function to get probability score
+        probability_score = 1 / (1 + np.exp(-log_odds_ratio))
+
+        # Aggregate probabilities across frames
+        final_probability_score = np.mean(probability_score)    # Average probability
+
+        # Interpretation
+        if final_probability_score >= 0.5:
+            correct += 1
+        else:
+            wrong += 1
+
+    for tst in test_non_target:
+        ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
+        ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
+
+        # Compute log-odds ratio
+        log_odds_ratio = ll_target - ll_non_target
+
+        # Apply sigmoid function to get probability score
+        probability_score = 1 / (1 + np.exp(-log_odds_ratio))
+
+        # Aggregate probabilities across frames
+        final_probability_score = np.mean(probability_score)    # Average probability
+
+        # Interpretation
+        if final_probability_score >= 0.5:
+            wrong += 1
+        else:
+            correct += 1
+    
+    print("Correctness: {:.2f}%".format(correct / (correct + wrong) * 100))
+else:
+    # Now run recognition for all target test utterances
+    # To do the same for non target set "test_set=test_non_target"
+    correct = 0
+    wrong = 0
+    print('Test target:')
+    score=[]
+    for tst in test_target:
+        ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
+        ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
+        # score.append((sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target)))
+
+        # Compute log-odds ratio
+        log_odds_ratio = ll_target - ll_non_target
+
+        # Apply sigmoid function to get probability score
+        probability_score = 1 / (1 + np.exp(-log_odds_ratio))
+
+        # Aggregate probabilities across frames
+        final_probability_score = np.mean(probability_score)    # Average probability
+
+        # Interpretation
+        if final_probability_score >= 0.5:
+            # print("The model predicts that the .wav file is from the target person with a confidence of {:.2f}%".format(final_probability_score*100))
+            # print("CORRECT - confidence that it is micheal {:.2f}%".format(final_probability_score*100))
+            correct += 1
+        else:
+            # print("The model predicts that the .wav file is not from the target person with a confidence of {:.2f}%".format((1 - final_probability_score)*100))
+            # print("WRONG - confidence that it is michael {:.2f}%".format(final_probability_score*100))
+            wrong += 1
+    # print(score)
+    print("Correctness: {:.2f}%".format(correct / (correct + wrong) * 100))
+
+    correct = 0
+    wrong = 0
+    print()
+    print('Test non target:')
+    score=[]
+    for tst in test_non_target:
+        ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
+        ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
+        # score.append((sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target)))
+
+        # Compute log-odds ratio
+        log_odds_ratio = ll_target - ll_non_target
+
+        # Apply sigmoid function to get probability score
+        probability_score = 1 / (1 + np.exp(-log_odds_ratio))
+
+        # Aggregate probabilities across frames
+        final_probability_score = np.mean(probability_score)    # Average probability
+
+        # Interpretation
+        if final_probability_score >= 0.5:
+            # print("The model predicts that the .wav file is from the target person with a confidence of {:.2f}%".format(final_probability_score*100))
+            # print("WRONG - confidence that it is michael {:.2f}%".format(final_probability_score*100))
+            wrong += 1
+        else:
+            # print("The model predicts that the .wav file is not from the target person with a confidence of {:.2f}%".format((1 - final_probability_score)*100))
+            # print("CORRECT - confidence that it is micheal {:.2f}%".format(final_probability_score*100))
+            correct += 1
+
+    print("Correctness: {:.2f}%".format(correct / (correct + wrong) * 100))
+    # print(score)
