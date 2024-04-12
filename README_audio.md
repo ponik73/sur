@@ -7,7 +7,7 @@
 Then just run:
 
 ```bash
-python3 speech.py
+python3 train_speech_model.py
 ```
 
 ### Code
