@@ -6,6 +6,7 @@ from numpy.random import rand
 from scipy.io import wavfile
 from scipy.special import logsumexp
 import scipy.fftpack
+import librosa
 
 # Gaussian distributions related functions
 
@@ -125,7 +126,34 @@ def mfcc(s, window, noverlap, nfft, fs, nbanks, nceps):
     S = spectogram(s, window, noverlap, nfft)
     return dct_mx.dot(np.log(mfb.T.dot(np.abs(S.T)))).T
 
-def wav16khz2mfcc(dir_name):
+def augment_audio(wav_data, augmentation_factor):
+    """
+    Augment audio data by time stretching
+    """
+    wav_data_float = librosa.util.buf_to_float(wav_data)
+    augmented_data = librosa.effects.time_stretch(wav_data_float, rate=augmentation_factor)
+    return augmented_data
+
+def augment_add_random_noise(wav_data, noise_level=0.01):
+    """
+    Add random noise to audio data.
+
+    Parameters:
+    - wav_data: NumPy array representing the audio signal.
+    - noise_level: Magnitude of the random noise (default is 0.01)
+
+    Returns:
+    - Noisy audio signal as a NumPy array.
+    """
+    # Generate random noise with the same length as the audio signal
+    noise = noise_level * np.random.rand(len(wav_data))
+
+    # Add the noise to the audio signal
+    noisy_audio = wav_data + noise
+
+    return noisy_audio
+
+def wav16khz2mfcc(dir_name, augment=False):
     """
     Loads all *.wav files from directory dir_name (must be 16KHz), converts them into MFCC
     features (13 coefficients) and stores them into a directory. Keys are the file names
@@ -133,7 +161,19 @@ def wav16khz2mfcc(dir_name):
     """
     features = {}
     for f in glob(dir_name + '/*.wav'):
+        print('Processing file: ', f)
         rate, s = wavfile.read(f)
         assert(rate == 16000)
         features[f] = mfcc(s, 400, 240, 512, 16000, 23, 13)
+        if augment:
+            stretch_speeds = [0.5, 0.8, 1.2, 1.5, 2.0]
+            for index, speed in enumerate(stretch_speeds):
+                augmented_data = augment_audio(s, speed)
+                augmented_features = mfcc(augmented_data, 400, 240, 512, 16000, 23, 13)
+                augmented_key = f.replace('.wav', '_augmented_stretch_speed_' + str(index) + '.wav')
+                features[augmented_key] = augmented_features
+            augmented_noisy_data = augment_add_random_noise(s)
+            augmented_noisy_features = mfcc(augmented_noisy_data, 400, 240, 512, 16000, 23, 13)
+            augmented_noisy_key = f.replace('.wav', '_augmented_random_noise.wav')
+            features[augmented_noisy_key] = augmented_noisy_features
     return features

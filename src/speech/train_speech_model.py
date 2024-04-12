@@ -16,8 +16,8 @@ def get_file_name_from_path(path):
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
-def load_file(path):
-    res_dict = wav16khz2mfcc(path)
+def load_file(path, augment=False):
+    res_dict = wav16khz2mfcc(path, augment=augment)
     return list(res_dict.keys()), list(res_dict.values())
 
 def calculate_test_score(ll_target, P_target, ll_non_target, P_non_target):
@@ -32,10 +32,11 @@ def evaluate_test_data(test_data,
         ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
         ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
         score.append(calculate_test_score(ll_target, P_target, ll_non_target, P_non_target))
+    return score
 
 def simulate_run(score_borders, iterations):
-    _, train_target = load_file('../data/target_train')
-    _, train_non_target = load_file('../data/non_target_train')
+    _, train_target = load_file('../data/target_train', augment=True)
+    _, train_non_target = load_file('../data/non_target_train', augment=True)
     test_target_keys, test_target = load_file('../data/target_dev')
     test_non_target_keys, test_non_target = load_file('../data/non_target_dev')
 
@@ -82,12 +83,16 @@ def simulate_run(score_borders, iterations):
                 # print('Iteration:', jj, ' Total log-likelihoods:', TTL_target, 'for target;', TTL_non_target, 'for non targets.')
 
             # Now run recognition for all target test utterances
-            score = evaluate_test_data(test_target, Ws_target, MUs_target, COVs_target, P_target, Ws_non_target, MUs_non_target, COVs_non_target, P_non_target)
+            score = evaluate_test_data(test_target, 
+                                       Ws_target, MUs_target, COVs_target, P_target, 
+                                       Ws_non_target, MUs_non_target, COVs_non_target, P_non_target)
             correct = sum(1 for s in score if s > border)
             total = len(score)
             correctness_target = (correct / total) * 100
 
-            score = evaluate_test_data(test_non_target, Ws_target, MUs_target, COVs_target, P_target, Ws_non_target, MUs_non_target, COVs_non_target, P_non_target)
+            score = evaluate_test_data(test_non_target, 
+                                       Ws_target, MUs_target, COVs_target, P_target, 
+                                       Ws_non_target, MUs_non_target, COVs_non_target, P_non_target)
             correct = sum(1 for s in score if s < border)
             total = len(score)
             correctness_non_target = (correct / total) * 100
