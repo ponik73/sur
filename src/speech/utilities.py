@@ -42,11 +42,7 @@ def train_gmm(x, ws, mus, covs):
     matrix MUs, covariance matrices given by M-by-D-by-D matrix COVs and vector
     of weights Ws.
     """
-    # print('ws1:',ws)
-    # print('mus1:',mus)
-    # print('covs1:',covs)
     gamma = np.vstack([np.log(w) + logpdf_gauss(x, m, c) for w, m, c in zip(ws, mus, covs)])
-    # print('Gamma:', gamma)
     logevidence = logsumexp(gamma, axis=0)
     gamma = np.exp(gamma - logevidence)
     tll = logevidence.sum()
@@ -137,7 +133,6 @@ def wav16khz2mfcc(dir_name):
     """
     features = {}
     for f in glob(dir_name + '/*.wav'):
-        print('Processing file: ', f)
         rate, s = wavfile.read(f)
         assert(rate == 16000)
         features[f] = mfcc(s, 400, 240, 512, 16000, 23, 13)
