@@ -1,5 +1,5 @@
 import numpy as np
-from utilities import load_file, logpdf_gmm
+from utilities import wav16khz2mfcc, logpdf_gmm
 
 def get_file_name_from_path(path):
     # Get the last part after last slash
@@ -10,10 +10,10 @@ def get_file_name_from_path(path):
 
     return file_name
 
-def evaluate_directory(test_data):
+def evaluate_test_data(test_data):
     # Load Ws_target and Ws_non_target
     Ws_target = np.loadtxt('Ws_target.txt')
-    Ws_non_target = np.load('Ws_non_target.txt')
+    Ws_non_target = np.loadtxt('Ws_non_target.txt')
 
     # Load MUs_target and MUs_non_target
     MUs_target = np.loadtxt('MUs_target.txt')
@@ -41,10 +41,11 @@ def print_score_results(files_names, score, decision_score_border):
         else:
             print('0')
 
-def main(dir_name):
-    # Load keys and values from .wav files
-    files_names, test_data = load_file(dir_name)
-    score = evaluate_directory(test_data)
-    print_score_results(files_names, score, 200)
+def main():
+    # Load keys and values from .wav files iniside directory
+    files_names, test_data = wav16khz2mfcc('../data/target_dev')
+    # files_names, test_data = wav16khz2mfcc('../data/non_target_dev')
+    score = evaluate_test_data(test_data)
+    print_score_results(files_names, score, 0)
 
-main('../data/target_dev')
+main()
