@@ -60,7 +60,7 @@ def simulate_run(score_borders, iterations):
             [Ws_target, MUs_target, COVs_target, TTL_target] = train_gmm(train_target, Ws_target, MUs_target, COVs_target)
             [Ws_non_target, MUs_non_target, COVs_non_target, TTL_non_target] = train_gmm(train_non_target, Ws_non_target, MUs_non_target, COVs_non_target)
             if (jj+1) % 5 == 0:
-                print('Iteration:', jj, ' Total log-likelihoods:', TTL_target, 'for target;', TTL_non_target, 'for non targets.')
+                print('Iteration:', jj+1, ' Total log-likelihoods:', TTL_target, 'for target;', TTL_non_target, 'for non targets.')
         end_time = time.time()
         execution_time = end_time - start_time
         print("Execution time:", round(execution_time),"seconds.")
@@ -95,7 +95,7 @@ def simulate_run(score_borders, iterations):
                 np.savetxt('border.txt', [border])
                 np.savetxt('max_avg_correctness.txt', [crc_avg])
                 max_avg_correctness = crc_avg
-            print()
+        print()
 
 def main():
     # Try borders -400, -350, ... 700, 750
