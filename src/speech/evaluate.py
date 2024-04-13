@@ -2,6 +2,9 @@ import os
 import numpy as np
 from utilities import wav16khz2mfcc, logpdf_gmm
 
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
 def get_file_name_from_path(path):
     # Get the last part after the last path separator
     last_part = os.path.basename(path)
@@ -11,7 +14,7 @@ def get_file_name_from_path(path):
 
     return file_name
 
-def evaluate_test_data(test_data):
+def evaluate_test_data(test_data, return_probabilities=False):
     # Load Ws_target and Ws_non_target
     Ws_target = np.loadtxt('Ws_target.txt')
     Ws_non_target = np.loadtxt('Ws_non_target.txt')
@@ -29,8 +32,20 @@ def evaluate_test_data(test_data):
         tst = test_data[i]
         ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
         ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
-        score_res = sum(ll_target) - sum(ll_non_target)
-        score.append(score_res)
+        if not return_probabilities:
+            score_res = sum(ll_target) - sum(ll_non_target)
+            score.append(score_res)
+        else:
+            # Compute log-odds ratio
+            log_odds_ratio = ll_target - ll_non_target
+
+            # Apply sigmoid function to get probability score
+            probability_score = sigmoid(log_odds_ratio)
+
+            # Aggregate probabilities across frames
+            final_probability = np.mean(probability_score)
+
+            score.append(final_probability)
     return score
 
 def print_score_results(files_names, score, decision_score_border):
