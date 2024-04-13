@@ -45,7 +45,7 @@ def simulate_run(score_borders, iterations):
     Ws_target = np.ones(M_target) / M_target
     Ws_non_target = np.ones(M_non_target) / M_non_target
 
-    max_avg_correctness = np.loadtxt('max_avg_correctness.txt')[0]
+    max_avg_correctness = np.loadtxt('max_avg_correctness.txt')
     for iter in range(iterations):
         print("Run:", iter+1)
         # Initialize mean vectors to randomly selected data points from corresponding class
@@ -82,10 +82,7 @@ def simulate_run(score_borders, iterations):
             crc_target = correct_targets / total_target * 100
             crc_non_target = correct_non_targets / total_non_target * 100
             crc_avg = (crc_target + crc_non_target) / 2
-            print("Border:", border)
-            print("Correctness for target data is {:.2f}".format(crc_target))
-            print("Correctness for non target data is {:.2f}".format(crc_non_target))
-            print("Correctness average is {:.2f}".format(crc_avg))
+            print("Border:", border,"avg correctness: {:.2f}".format(crc_avg))
             if crc_avg > max_avg_correctness:
                 print("Saving new training parameters with border:", border,"and new max avg correctness: {:.2f}".format(crc_avg))
                 # Save training parameters
@@ -101,7 +98,9 @@ def simulate_run(score_borders, iterations):
             print()
 
 def main():
-    score_borders = [-200, 0, 200, 400, 600]
+    # Try borders -400, -350, ... 700, 750
+    score_borders = list(range(-400, 800, 50))
+    
     # Run n iterations of simulation to get distinct correctnesses
     num_iterations = 10
     simulate_run(score_borders, num_iterations)
