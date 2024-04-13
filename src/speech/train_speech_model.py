@@ -51,8 +51,8 @@ def simulate_run(score_borders, iterations):
 
     # Train and test with GMM models with diagonal covariance matrices
     # Decide for number of gaussian mixture components used for the target and non target models
-    M_target = 5
-    M_non_target = 5
+    M_target = 25
+    M_non_target = 25
 
     # Initialize all variance vectors (diagonals of the full covariance matrices) to
     # the same variance vector computed using all the data from the given class
@@ -76,11 +76,12 @@ def simulate_run(score_borders, iterations):
             # Initialize parameters of non target model
             MUs_non_target = train_non_target[randint(1, len(train_non_target), M_non_target)]
 
-            # Run 50 iterations of EM agorithm to train the two GMMs from target and non target
+            # Run 30 iterations of EM agorithm to train the two GMMs from target and non target
             for jj in range(50):
                 [Ws_target, MUs_target, COVs_target, TTL_target] = train_gmm(train_target, Ws_target, MUs_target, COVs_target)
                 [Ws_non_target, MUs_non_target, COVs_non_target, TTL_non_target] = train_gmm(train_non_target, Ws_non_target, MUs_non_target, COVs_non_target)
-                # print('Iteration:', jj, ' Total log-likelihoods:', TTL_target, 'for target;', TTL_non_target, 'for non targets.')
+                if jj % 5 == 0:
+                    print('Iteration:', jj, ' Total log-likelihoods:', TTL_target, 'for target;', TTL_non_target, 'for non targets.')
 
             # Now run recognition for all target test utterances
             score = evaluate_test_data(test_target, 
@@ -112,10 +113,10 @@ def simulate_run(score_borders, iterations):
     return correctness_target, correctness_non_target
 
 def main():
-    score_borders = [-200, 0, 200, 400, 600]
-    # score_borders = [400]
+    score_borders = [0, 200, 400]
+    # score_borders = [0]
     # Run n iterations of simulation to get distinct correctnesses
-    num_iterations = 10
+    num_iterations = 1
     simulate_run(score_borders, num_iterations)
 
 main()
