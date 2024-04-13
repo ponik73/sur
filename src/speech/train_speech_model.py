@@ -113,10 +113,11 @@ def simulate_run(score_borders, iterations):
     return correctness_target, correctness_non_target
 
 def main():
-    score_borders = [0, 200, 400]
-    # score_borders = [0]
+    # score_borders = [0, 200, 400]
+    score_borders = [0]
     # Run n iterations of simulation to get distinct correctnesses
-    num_iterations = 1
+    num_iterations = 5
     simulate_run(score_borders, num_iterations)
+    # TODO: generate files for weights, MUs and COVs
 
 main()
