@@ -153,7 +153,7 @@ def augment_add_random_noise(wav_data, noise_level=0.01):
 
     return noisy_audio
 
-def wav16khz2mfcc(dir_name, augment=False):
+def wav16khz2mfcc(dir_name, augment=False, print_file_info=True):
     """
     Loads all *.wav files from directory dir_name (must be 16KHz), converts them into MFCC
     features (13 coefficients) and stores them into a directory. Keys are the file names
@@ -161,7 +161,8 @@ def wav16khz2mfcc(dir_name, augment=False):
     """
     features = {}
     for f in glob(dir_name + '/*.wav'):
-        print('Processing file: ', f)
+        if print_file_info:
+            print('Processing file: ', f)
         rate, s = wavfile.read(f)
 
         # Trim silence
