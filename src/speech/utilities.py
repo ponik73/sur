@@ -169,6 +169,7 @@ def wav16khz2mfcc(dir_name, augment=False):
         assert(rate == 16000)
         features[f] = mfcc(s_trimmed, 400, 240, 512, 16000, 23, 13)
         if augment:
+            # Data augmentation
             stretch_speeds = [0.5, 0.8, 1.2, 1.5, 2.0]
             for index, speed in enumerate(stretch_speeds):
                 augmented_data = augment_audio(s, speed)
@@ -179,8 +180,4 @@ def wav16khz2mfcc(dir_name, augment=False):
             augmented_noisy_features = mfcc(augmented_noisy_data, 400, 240, 512, 16000, 23, 13)
             augmented_noisy_key = f.replace('.wav', '_augmented_random_noise.wav')
             features[augmented_noisy_key] = augmented_noisy_features
-    return features
-
-def load_file(path, augment=False):
-    res_dict = wav16khz2mfcc(path, augment=augment)
-    return list(res_dict.keys()), list(res_dict.values())
+    return list(features.keys()), list(features.values())
