@@ -5,9 +5,6 @@ import numpy as np
 from numpy.random import randint
 import time
 
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
-
 def calculate_test_score(ll_target, ll_non_target):
     return sum(ll_target) - sum(ll_non_target)
 
