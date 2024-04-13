@@ -1,12 +1,13 @@
+import os
 import numpy as np
 from utilities import wav16khz2mfcc, logpdf_gmm
 
 def get_file_name_from_path(path):
-    # Get the last part after last slash
-    last_part = path.split("/")[-1]
+    # Get the last part after the last path separator
+    last_part = os.path.basename(path)
 
     # Remove the file extension
-    file_name = last_part.split(".")[0]
+    file_name = os.path.splitext(last_part)[0]
 
     return file_name
 
