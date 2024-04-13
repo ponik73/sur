@@ -43,8 +43,9 @@ def print_score_results(files_names, score, decision_score_border):
 
 def main():
     # Load keys and values from .wav files iniside directory
-    files_names, test_data = wav16khz2mfcc('../data/target_dev')
-    # files_names, test_data = wav16khz2mfcc('../data/non_target_dev')
+    files_names, test_data = wav16khz2mfcc('../data/target_dev', print_file_info=False)
+
+    # Get list of scores for every item inside test_data
     score = evaluate_test_data(test_data)
     print_score_results(files_names, score, 0)
 
