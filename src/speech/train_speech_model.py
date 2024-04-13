@@ -45,7 +45,7 @@ def simulate_run(score_borders, iterations):
     Ws_target = np.ones(M_target) / M_target
     Ws_non_target = np.ones(M_non_target) / M_non_target
 
-    max_avg_correctness = np.loadtxt('max_avg_correctness.txt')
+    max_avg_correctness = np.loadtxt('max_avg_correctness.txt')[0]
     for iter in range(iterations):
         print("Run:", iter+1)
         # Initialize mean vectors to randomly selected data points from corresponding class
@@ -95,8 +95,8 @@ def simulate_run(score_borders, iterations):
                 np.savetxt('MUs_non_target.txt', MUs_non_target)
                 np.savetxt('COVs_target.txt', COVs_target)
                 np.savetxt('COVs_non_target.txt', COVs_non_target)
-                np.savetxt('border.txt', border)
-                np.savetxt('max_avg_correctness.txt', crc_avg)
+                np.savetxt('border.txt', [border])
+                np.savetxt('max_avg_correctness.txt', [crc_avg])
                 max_avg_correctness = crc_avg
             print()
 
