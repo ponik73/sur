@@ -70,7 +70,7 @@ python3 evaluate.py
 5. We are running n iterations to get distinct results.
    We set the number of iterations for each training before starting. The program runs n iterations and calculates the correctness of the target model, the correctness of the non-target model, and also the average correctness which is calculated as `(correctness_target + correctness_non_target) / 2`  and this average correctness gives us a better understanding of how good the parameters are. For each iteration:
    1. Initialize mean vectors to randomly selected data points from corresponding class. This code is from the provided codes.
-   2. We measure the time for training the two GMMs for target and non-target models. In this step, we tried different numbers of iterations, with a maximum of 100. This training was slow and took 650 seconds which is almost 11 minutes. From the log information about total log-likelihoods, we discovered that the convergence is mostly around the 30th iteration which is the same as in the provided codes. We also tried to eliminate EM algorithm training, but the correctness decreased. Increasing the number of iterations in EM algorithm training led to slower training but better results. After convergence, the results also converged.
+   2. We measure the time for training the two GMMs for target and non-target models. In this step, we tried different numbers of iterations, with a maximum of 100. This training was slow and took 650 seconds which is almost 11 minutes. From the log information about total log-likelihoods, we discovered that the convergence is mostly around the 30th iteration which is the same as in the provided codes. 30 iterations took approximatelly 198 seconds. We also tried to eliminate EM algorithm training, but the correctness decreased. Increasing the number of iterations in EM algorithm training led to slower training but better results. After convergence, the results also converged.
 
 After 90 iterations of the EM algorithm to train the two GMMs from target and non-target, we have had:
 ```
@@ -84,7 +84,7 @@ We see that there could be a reason to set the score border to a different numbe
    3. After training parameters, we evaluate test data for both target and non-target data. The results we save to `score_CLASS` lists with scores for each data. Then we try to apply different borders to discover which can split the data most accurately. We log information about the target model correctness, the non-target model correctness, and the average correctness.
    4. We also remember the highest `max_avg_correctness` and if some border and parameters outperform the current maximum, we save these parameters into `.txt` files for evaluation. We also save that `border` and `max_avg_correctness` data into files, border for evaluation and maximum correctness for the next training.
 
-Below we describe
+Below we describe three main approaches that we tried to use to decide if the tested data is target or not. The best was the `Score` approach closely followed by the `Average probability` approach. The `Max probability` approach was not working. In the [Score](#score) section we also summarize the results of the best run.
 
 #### Score
 
@@ -94,7 +94,11 @@ ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
 score = sum(ll_target) + np.log(P_target) - (sum(ll_non_target) + np.log(P_non_target))
 ```
 
-Correctness is described in the weights distribution tables above (The scoring approach was used there).
+Correctness is described in the weights distribution tables above (The scoring approach was used there). Our best found is described in the table below.
+
+| Score border | EM algorithm training iterations | Gausian mixture components | Average correctness |
+| :----------: | :------------------------------: | :------------------------: | :-----------------: |
+| -200         | 30                               | 15 for both                | 99.17%              |
 
 #### Average probability
 
