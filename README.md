@@ -131,7 +131,8 @@ Below we describe three main approaches that we tried to use to decide if the te
 ```python
 ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
 ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
-score = sum(ll_target) + np.log(P_target) - (sum(ll_non_target) + np.log(P_non_target))
+score_res = sum(ll_target) - sum(ll_non_target)
+score.append(score_res)
 ```
 
 Correctness is described in the weights distribution tables above (The scoring approach was used there). Our best found is described in the table below.
