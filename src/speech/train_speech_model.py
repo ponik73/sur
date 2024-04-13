@@ -1,27 +1,14 @@
 import matplotlib.pyplot as plt
-from utilities import wav16khz2mfcc, logpdf_gauss, train_gauss, train_gmm, logpdf_gmm
+from utilities import load_file, logpdf_gauss, train_gauss, train_gmm, logpdf_gmm
 import scipy.linalg
 import numpy as np
 from numpy.random import randint
 
-def get_file_name_from_path(path):
-    # Get the last part after last slash
-    last_part = path.split("/")[-1]
-
-    # Remove the file extension
-    file_name = last_part.split(".")[0]
-
-    return file_name
-
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
-def load_file(path, augment=False):
-    res_dict = wav16khz2mfcc(path, augment=augment)
-    return list(res_dict.keys()), list(res_dict.values())
-
 def calculate_test_score(ll_target, P_target, ll_non_target, P_non_target):
-    return (sum(ll_target) + np.log(P_target)) - (sum(ll_non_target) + np.log(P_non_target))
+    return sum(ll_target) - sum(ll_non_target)
 
 def evaluate_test_data(test_data, 
                        Ws_target, MUs_target, COVs_target, P_target, 
@@ -42,8 +29,6 @@ def simulate_run(score_borders, iterations):
 
     train_target = np.vstack(train_target)
     train_non_target = np.vstack(train_non_target)
-    test_target = test_target
-    test_non_target = test_non_target
 
     # Define uniform a-priori probabilities of classes:
     P_target = 0.5
@@ -63,6 +48,7 @@ def simulate_run(score_borders, iterations):
     Ws_target = np.ones(M_target) / M_target
     Ws_non_target = np.ones(M_non_target) / M_non_target
 
+    max_avg_correctness = 0
     for border in score_borders:
         print("Score border:",border)
         crc_targets=[]
@@ -76,12 +62,12 @@ def simulate_run(score_borders, iterations):
             # Initialize parameters of non target model
             MUs_non_target = train_non_target[randint(1, len(train_non_target), M_non_target)]
 
-            # Run 30 iterations of EM agorithm to train the two GMMs from target and non target
+            # Run n iterations of EM agorithm to train the two GMMs from target and non target
             for jj in range(50):
                 [Ws_target, MUs_target, COVs_target, TTL_target] = train_gmm(train_target, Ws_target, MUs_target, COVs_target)
                 [Ws_non_target, MUs_non_target, COVs_non_target, TTL_non_target] = train_gmm(train_non_target, Ws_non_target, MUs_non_target, COVs_non_target)
-                if jj % 5 == 0:
-                    print('Iteration:', jj, ' Total log-likelihoods:', TTL_target, 'for target;', TTL_non_target, 'for non targets.')
+                # if jj % 5 == 0:
+                #     print('Iteration:', jj, ' Total log-likelihoods:', TTL_target, 'for target;', TTL_non_target, 'for non targets.')
 
             # Now run recognition for all target test utterances
             score = evaluate_test_data(test_target, 
@@ -102,6 +88,18 @@ def simulate_run(score_borders, iterations):
             crc_targets.append(correctness_target)
             crc_non_targets.append(correctness_non_target)
             avg_crcs.append(avg_correctness)
+
+            if avg_correctness > max_avg_correctness:
+                print('Saving new training parameters with border and new max avg correctness:', border, avg_correctness)
+                # Save training parameters
+                np.savetxt('Ws_target.txt', Ws_target)
+                np.savetxt('Ws_non_target.txt', Ws_non_target)
+                np.savetxt('MUs_target.txt', MUs_target)
+                np.savetxt('MUs_non_target.txt', MUs_non_target)
+                np.savetxt('COVs_target.txt', COVs_target)
+                np.savetxt('COVs_non_target.txt', COVs_non_target)
+                max_avg_correctness = avg_correctness
+
             print("Run:", iter+1, ", crc target: {:.2f}".format(correctness_target), ", crc non target: {:.2f}".format(correctness_non_target), ", avg crc: {:.2f}".format(avg_correctness))
 
         if iterations > 1:
@@ -113,8 +111,8 @@ def simulate_run(score_borders, iterations):
     return correctness_target, correctness_non_target
 
 def main():
-    # score_borders = [0, 200, 400]
-    score_borders = [0]
+    score_borders = [0, 200, 400]
+    # score_borders = [0]
     # Run n iterations of simulation to get distinct correctnesses
     num_iterations = 5
     simulate_run(score_borders, num_iterations)

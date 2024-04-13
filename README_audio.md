@@ -49,7 +49,7 @@ ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
 score = sum(ll_target) + np.log(P_target) - (sum(ll_non_target) + np.log(P_non_target))
 ```
 
-If the score is above `score_border` value, the model predicts that the tst file is target, otherwise it is not target. All the score border tests were calculated as average from 10 different runs.
+If the score is above `score_border` value, the model predicts that the tst file is target, otherwise it is not target. All the score border tests were calculated as average from 10 different runs without augmented data.
 
 **Uniform weights distribution:**
 | Score border  | Correctness of target | Correctness of non-target | Correctness average |
@@ -126,3 +126,65 @@ Correctness of target: 100.00%
 Correctness of non-target: 0.00%
 
 This is because in every .wav file there is probability somewhere around 0.99 that the frame is from target file. So this approach is useless for our problem.
+
+## Data augmentation
+
+We implemented data augmentation for training data, the code is provided below:
+
+```python
+def augment_audio(wav_data, augmentation_factor):
+    """
+    Augment audio data by time stretching
+    """
+    wav_data_float = librosa.util.buf_to_float(wav_data)
+    augmented_data = librosa.effects.time_stretch(wav_data_float, rate=augmentation_factor)
+    return augmented_data
+
+def augment_add_random_noise(wav_data, noise_level=0.01):
+    """
+    Add random noise to audio data.
+
+    Parameters:
+    - wav_data: NumPy array representing the audio signal.
+    - noise_level: Magnitude of the random noise (default is 0.01)
+
+    Returns:
+    - Noisy audio signal as a NumPy array.
+    """
+    # Generate random noise with the same length as the audio signal
+    noise = noise_level * np.random.rand(len(wav_data))
+
+    # Add the noise to the audio signal
+    noisy_audio = wav_data + noise
+
+    return noisy_audio
+
+def wav16khz2mfcc(dir_name, augment=False):
+    """
+    Loads all *.wav files from directory dir_name (must be 16KHz), converts them into MFCC
+    features (13 coefficients) and stores them into a directory. Keys are the file names
+    and values and 2D numpy arrays of MFCC features.
+    """
+    features = {}
+    for f in glob(dir_name + '/*.wav'):
+        print('Processing file: ', f)
+        rate, s = wavfile.read(f)
+        assert(rate == 16000)
+        features[f] = mfcc(s, 400, 240, 512, 16000, 23, 13)
+        if augment:
+            stretch_speeds = [0.5, 0.8, 1.2, 1.5, 2.0]
+            for index, speed in enumerate(stretch_speeds):
+                augmented_data = augment_audio(s, speed)
+                augmented_features = mfcc(augmented_data, 400, 240, 512, 16000, 23, 13)
+                augmented_key = f.replace('.wav', '_augmented_stretch_speed_' + str(index) + '.wav')
+                features[augmented_key] = augmented_features
+            augmented_noisy_data = augment_add_random_noise(s)
+            augmented_noisy_features = mfcc(augmented_noisy_data, 400, 240, 512, 16000, 23, 13)
+            augmented_noisy_key = f.replace('.wav', '_augmented_random_noise.wav')
+            features[augmented_noisy_key] = augmented_noisy_features
+    return features
+```
+
+At the beginning the results were bad, the correctness of non target data dropped to somewhere around 50-60%. We solved this with increasing `M_target` and `M_non_target` number of gaussian mixture components used for the target and non target models. It had a negative impact on the training time of the model, but the average percentage between target and non target data went back to 90+%.
+
+We added wav files with different stretch speeds, as we can see we used 5 different stretch speeds for augmentation and also we created augmented audio file with noise. So instead of having 20 target data and 132 non target data we have 140 target data and 924 non target data.

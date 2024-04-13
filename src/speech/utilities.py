@@ -163,8 +163,11 @@ def wav16khz2mfcc(dir_name, augment=False):
     for f in glob(dir_name + '/*.wav'):
         print('Processing file: ', f)
         rate, s = wavfile.read(f)
+
+        # Trim silence
+        s_trimmed, _ = librosa.effects.trim(s, top_db=10)
         assert(rate == 16000)
-        features[f] = mfcc(s, 400, 240, 512, 16000, 23, 13)
+        features[f] = mfcc(s_trimmed, 400, 240, 512, 16000, 23, 13)
         if augment:
             stretch_speeds = [0.5, 0.8, 1.2, 1.5, 2.0]
             for index, speed in enumerate(stretch_speeds):
@@ -177,3 +180,7 @@ def wav16khz2mfcc(dir_name, augment=False):
             augmented_noisy_key = f.replace('.wav', '_augmented_random_noise.wav')
             features[augmented_noisy_key] = augmented_noisy_features
     return features
+
+def load_file(path, augment=False):
+    res_dict = wav16khz2mfcc(path, augment=augment)
+    return list(res_dict.keys()), list(res_dict.values())
