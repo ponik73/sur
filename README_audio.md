@@ -1,47 +1,92 @@
 ## SPEECH
 
+This speech documentation describes the approach that we used for deciding if the .wav file was recorded by the target person or not. It outlines methods that we use for training and how we evaluate the test data or any unseen data.
+
 ### How to run the program
 
-`speech.py` file is ready to test different `score_borders` and number of `iterations`. You just need to set these two values in `speech.py` file in `main` function.
+1. Go to the directory `speech`.
+2. Install dependencies using 
 
-Then just run:
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+3. You have two options:
+   1. You can run training
+   2. You can run an evaluation of the test set
+
+Running training:
 
 ```bash
 python3 train_speech_model.py
 ```
 
-### Code
+Running evaluation:
 
-```python
-# Decide for number of gaussian mixture components used for the target model
-M_target = 5
-M_non_target = 5
-
-# Initialize mean vectors to randomly selected data points from corresponding class
-MUs_target = train_target[randint(1, len(train_target), M_target)]
-MUs_non_target = train_non_target[randint(1, len(train_non_target), M_non_target)]
-
-# Initialize all variance vectors (diagonals of the full covariance matrices) to
-# the same variance vector computed using all the data from the given class
-COVs_target = [np.var(train_target, axis=0)] * M_target
-COVs_non_target = [np.var(train_non_target, axis=0)] * M_non_target
+```bash
+python3 evaluate.py
 ```
 
-Weights are trained with two different approaches:
-- uniform,
-- random.
+### Train speech model code
 
-```python
-# Use uniform distribution as initial guess for the weights
-Ws_target = np.ones(M_target) / M_target
-Ws_non_target = np.ones(M_non_target) / M_non_target
+1. Loading files and data augmentation
+   We used the `wav16khz2mfcc` function from the provided codes and added data augmentation for different stretch speeds, we also augmented the file with random noise. With these two techniques, we created six new augmented data (five with stretching speed and one with adding noise). The function is in the `utilities.py` file. Data augmentation is also described [below](#data-augmentation). Also we implemented trimming silence from both train and dev speeches using `librosa` library.
+2. Decide the number of Gaussian mixture components used for the target and nontarget models.
+   We tried to change the number of Gaussian mixture components used for the target and non-target models, firstly we started with 5 components for both target and non-target models. Without data augmentation, the model worked fine but after augmentation was added, the correctness of the model rapidly decreased. We then tried to set the numbers to 25 which led to prolonged training but improved the model correctness back to the 90%+ as was before with 5 components and without data augmentation. We then decreased the number of components to 15 to avoid slow training and measured model correctness which was again above 90%.
+3. Initialize all variance vectors.
+   We kept this code from the provided codes.
+4. Generating weights
+   Here we tried two different approaches as initial guesses for the weights. Firstly we used uniform distribution and then we tried random weights distribution. The distinct distributions were examined on non-augmented data.
 
-# ------------------------------------------------------------
-Ws_target = np.rand(M_target)
-Ws_non_target = np.rand(M_non_target)
+   ```python
+    # Use uniform distribution as initial guess for the weights
+    Ws_target = np.ones(M_target) / M_target
+    Ws_non_target = np.ones(M_non_target) / M_non_target
+
+    # Use random distribution as initial guess for the weights
+    Ws_target = np.rand(M_target)
+    Ws_non_target = np.rand(M_non_target)
+    ```
+
+    **Uniform weights distribution:**
+    | Score border  | Correctness of target | Correctness of non-target | Correctness average |
+    | ------------  | --------------------: | ------------------------: | ------------------: |
+    | -200          | **100.00%**           | 87.00%                    | 93.50%              |
+    | 0             | 99.00%                | 88.83%                    | 93.92%              |
+    | 200           | **100.00%**           | 90.83%                    | 95.42%              |
+    | 400           | 97.00%                | 94.17%                    | **95.58%**          |
+    | 600           | 93.00%                | **97.00%**                | 95.00%              |
+
+    **Random weights distribution:**
+    | Score border  | Correctness of target | Correctness of non-target | Correctness average |
+    | ------------  | --------------------: | ------------------------: | ------------------: |
+    | -200          | **100.00%**           | 86.67%                    | 93.33%              |
+    | 0             | **100.00%**           | 89.33%                    | 94.67%              |
+    | 200           | 99.00%                | 91.50%                    | 95.25%              |
+    | 400           | 95.00%                | 94.33%                    | 94.67%              |
+    | 600           | 96.00%                | **95.33%**                | **95.67%**          |
+
+    If the score is above `Score border` value, the model predicts that the tst file is target, otherwise it is not target. All the score border tests were calculated as average from 10 different runs. Weight distribution is not significant for model correctness.
+5. We are running n iterations to get distinct results.
+   We set the number of iterations for each training before starting. The program runs n iterations and calculates the correctness of the target model, the correctness of the non-target model, and also the average correctness which is calculated as `(correctness_target + correctness_non_target) / 2`  and this average correctness gives us a better understanding of how good the parameters are. For each iteration:
+   1. Initialize mean vectors to randomly selected data points from corresponding class. This code is from the provided codes.
+   2. We measure the time for training the two GMMs for target and non-target models. In this step, we tried different numbers of iterations, with a maximum of 100. This training was slow and took 650 seconds which is almost 11 minutes. From the log information about total log-likelihoods, we discovered that the convergence is mostly around the 30th iteration which is the same as in the provided codes. We also tried to eliminate EM algorithm training, but the correctness decreased. Increasing the number of iterations in EM algorithm training led to slower training but better results. After convergence, the results also converged.
+
+After 90 iterations of the EM algorithm to train the two GMMs from target and non-target, we have had:
+```
+Iteration: 90  Total log-likelihoods: -2314243.0034861485 for target; -17922917.091317676 for non targets.
 ```
 
-#### Score probability
+The `TTL_target` value (-2314243.0034861485) is significantly higher (less negative) than the `TTL_non_target` value (-17922917.091317676), indicating that the model is much better at explaining the data from the target class compared to the non-target class.
+
+We see that there could be a reason to set the score border to a different number than 0. The model is better at recognizing when speech is the target, when it is not, it is a little prone to guessing that the input is the target.
+
+   3. After training parameters, we evaluate test data for both target and non-target data. The results we save to `score_CLASS` lists with scores for each data. Then we try to apply different borders to discover which can split the data most accurately. We log information about the target model correctness, the non-target model correctness, and the average correctness.
+   4. We also remember the highest `max_avg_correctness` and if some border and parameters outperform the current maximum, we save these parameters into `.txt` files for evaluation. We also save that `border` and `max_avg_correctness` data into files, border for evaluation and maximum correctness for the next training.
+
+Below we describe
+
+#### Score
 
 ```python
 ll_target = logpdf_gmm(tst, Ws_target, MUs_target, COVs_target)
@@ -49,37 +94,7 @@ ll_non_target = logpdf_gmm(tst, Ws_non_target, MUs_non_target, COVs_non_target)
 score = sum(ll_target) + np.log(P_target) - (sum(ll_non_target) + np.log(P_non_target))
 ```
 
-If the score is above `score_border` value, the model predicts that the tst file is target, otherwise it is not target. All the score border tests were calculated as average from 10 different runs without augmented data.
-
-**Uniform weights distribution:**
-| Score border  | Correctness of target | Correctness of non-target | Correctness average |
-| ------------  | --------------------: | ------------------------: | ------------------: |
-| -200          | **100.00%**           | 87.00%                    | 93.50%              |
-| 0             | 99.00%                | 88.83%                    | 93.92%              |
-| 200           | **100.00%**           | 90.83%                    | 95.42%              |
-| 400           | 97.00%                | 94.17%                    | **95.58%**          |
-| 600           | 93.00%                | **97.00%**                | 95.00%              |
-
-**Random weights distribution:**
-| Score border  | Correctness of target | Correctness of non-target | Correctness average |
-| ------------  | --------------------: | ------------------------: | ------------------: |
-| -200          | **100.00%**           | 86.67%                    | 93.33%              |
-| 0             | **100.00%**           | 89.33%                    | 94.67%              |
-| 200           | 99.00%                | 91.50%                    | 95.25%              |
-| 400           | 95.00%                | 94.33%                    | 94.67%              |
-| 600           | 96.00%                | **95.33%**                | **95.67%**          |
-
-After 100 iterations of EM agorithm to train the two GMMs from target and non target we have:
-```
-Iteration: 99  Total log-likelihoods: -301292.9122690845 for target; -2359995.631752151 for non targets.
-```
-
-The `TTL_target` value (-301292.9122690845) is significantly higher (less negative) than the `TTL_non_target` value (-2359995.631752151), indicating that the model is much better at explaining the data from the target class compared to the non-target class.
-
-We see that there could be reason to set score border to different number than 0. Model is better recognizing when speech is target, when it is not, the model is little bit prone to guessing that the input is target. Weights distribution is not significant for model correctness.
-
-I also tried to get rid of EM algorithm training, but the probability was worse. Increasing number of iteration in EM algorithm training led to slower training but better results. So I set the number of training iterations to 50.
-
+Correctness is described in the weights distribution tables above (The scoring approach was used there).
 
 #### Average probability
 
@@ -127,7 +142,7 @@ Correctness of non-target: 0.00%
 
 This is because in every .wav file there is probability somewhere around 0.99 that the frame is from target file. So this approach is useless for our problem.
 
-## Data augmentation
+### Data augmentation
 
 We implemented data augmentation for training data, the code is provided below:
 
@@ -185,6 +200,12 @@ def wav16khz2mfcc(dir_name, augment=False):
     return features
 ```
 
-At the beginning the results were bad, the correctness of non target data dropped to somewhere around 50-60%. We solved this with increasing `M_target` and `M_non_target` number of gaussian mixture components used for the target and non target models. It had a negative impact on the training time of the model, but the average percentage between target and non target data went back to 90+%.
+In the beginning, the results were bad, the correctness of non-target data dropped to somewhere around 50-60%. We solved this by increasing the `M_target` and `M_non_target` Gaussian mixture components used for the target and non-target models. It had a negative impact on the training time of the model, but the average correctness percentage between the target and non-target data went back to 90%+.
 
-We added wav files with different stretch speeds, as we can see we used 5 different stretch speeds for augmentation and also we created augmented audio file with noise. So instead of having 20 target data and 132 non target data we have 140 target data and 924 non target data.
+We added new augmented data with different stretch speeds. As we can see, we used 5 different stretch speeds for augmentation and we also created an augmented audio file with noise. So instead of having 20 target data and 132 non-target data, we have 140 target data and 924 non-target data.
+
+### Evaluate data
+
+In the main function, there is a `wav16khz2mfcc` function that takes the directory path as the parameter. It evaluates all the WAV files in that directory and prints results in the desired format.
+
+All the parameters are loaded from TXT files, which were created by training speech model.
