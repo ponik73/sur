@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import pandas as pd
 from utilities import wav16khz2mfcc, logpdf_gmm
 
 def sigmoid(x):
@@ -14,7 +15,10 @@ def get_file_name_from_path(path):
 
     return file_name
 
-def evaluate_test_data(test_data, return_probabilities=False):
+def evaluate_speech_data(dir_name, return_probabilities=False):
+    # Load keys and values from .wav files iniside directory
+    files_names, test_data = wav16khz2mfcc(dir_name, print_file_info=False)
+
     # Load Ws_target and Ws_non_target
     Ws_target = np.loadtxt('Ws_target.txt')
     Ws_non_target = np.loadtxt('Ws_non_target.txt')
@@ -26,6 +30,12 @@ def evaluate_test_data(test_data, return_probabilities=False):
     # Load COVs_target and COVs_non_target
     COVs_target = np.loadtxt('COVs_target.txt')
     COVs_non_target = np.loadtxt('COVs_non_target.txt')
+
+    # Load best decision border for evaluation parameters
+    if not return_probabilities:
+        decision_border = np.loadtxt('border.txt')
+    else:
+        decision_border = 0.5
 
     score=[]
     for i in range(len(test_data)):
@@ -46,26 +56,23 @@ def evaluate_test_data(test_data, return_probabilities=False):
             final_probability = np.mean(probability_score)
 
             score.append(final_probability)
-    return score
 
-def print_score_results(files_names, score, decision_score_border):
-    for i in range(len(files_names)):
-        print(get_file_name_from_path(files_names[i]), end=' ')
-        print(score[i], end=' ')
-        if score[i] > decision_score_border:
-            print('1')
-        else:
-            print('0')
+    dfAudio = pd.DataFrame({
+        "filename": files_names,
+        "softPredictionAudio": score,
+        "hardPredictionAudio": [0] * len(score)
+    })
+
+    dfAudio["filename"] = dfAudio["filename"].apply(get_file_name_from_path)
+    dfAudio["hardPredictionAudio"] = (dfAudio["softPredictionAudio"] > decision_border).astype(int)
+
+    return dfAudio
 
 def main():
-    # Load keys and values from .wav files iniside directory
-    files_names, test_data = wav16khz2mfcc('../data/non_target_dev', print_file_info=False)
+    dir_name = '../data/target_dev'
 
-    # Load best decision border for evaluation parameters
-    decision_border = np.loadtxt('border.txt')
-
-    # Get list of scores for every item inside test_data
-    score = evaluate_test_data(test_data)
-    print_score_results(files_names, score, decision_border)
+    # Get data frame with processed test data
+    dfAudio = evaluate_speech_data(dir_name, return_probabilities=True)
+    print(dfAudio)
 
 main()
