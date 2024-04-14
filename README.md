@@ -2,17 +2,19 @@
 
 [assignment](https://www.fit.vutbr.cz/study/courses/SUR/public/projekt_2023-2024/SUR_projekt2023-2024.txt)
 
-## IMG
+## Dependencies
 
-1. Go to directory
-```
-cd src/img
-```
-2. Create virtual env 
+To run project source code the installation of dependecies is required. The dependecies are listed in `src/requirements.txt`.
+
+To install these dependecies follow steps bellow.
+
+At `src` directory:
+
+1. Create virtual env
 ```
 python3 -m venv .venv
 ```
-3. Activate virtual env 
+2. Activate virtual env
 
 Unix:
 ```
@@ -22,19 +24,55 @@ Windows:
 ```
 .venv\Scripts\activate
 ```
-4. Install requirements
+3. Install requirements
 ```
 python3 -m pip install -r requirements.txt
 ```
-5. Run
-```
-python3 image_NN.py
-```
-- If `one_person_detector.keras` file is available model will be loaded from this file, otherwise it will be trained. For training data in `../data` will be used.
 
-- For evaluation data script uses data with path specified in variable ``PATH_EVAL``.
+#### Image model
 
-- Script writes the output of evaluation to the `../image_NN.txt` file
+If you are running any evaluation regarding images for the first time, it is necessary to train the image model. Before training model it is necessary to generate augmented data and structure it. To do so:
+
+1. Go to `src/img` directory
+2. Run script generating augmented data:
+```
+python3 augmentData.py
+```
+
+## Usage
+
+Prediction - detection of target person.
+
+Place data that on which predictions will be made at `TODO` directory (in `.png` and `.wav` format).
+
+Run:
+```
+python3 combined.py
+```
+
+This script produce prediction `.txt` files into `src/predictions` directory.
+
+- `combined.txt` contains predictions made on simultaneously `.png` and `.wav` data produced via both speech model and image model
+- `image.txt` contains predictions made on `.png` data made via image model
+- `speech.txt` contains predictions made on `.wav` data made via speech model
+
+### Image
+
+To predict only `.png` files run:
+```
+python3 img/image_NN.py
+```
+
+This script produce prediction `image.txt` file (see above).
+
+### Speech
+
+To predict only `.wav` files run:
+```
+python3 speech/evaluate.py
+```
+
+### TODO: This script produce prediction `speech.txt` file (see above).
 
 ##### TODO: Img solution summary
 
