@@ -251,8 +251,8 @@ We added new augmented data with different stretch speeds. As we can see, we use
 
 ### Evaluate data
 
-In the main function, there is a `wav16khz2mfcc` function that takes the directory path as the parameter. It evaluates all the WAV files in that directory and prints results in the desired format.
+Speech data evaluation can be called only from the parent directory (running only speech evaluation is possible, but you need to change two things in the `src/speech/evaluate.py` file, the two things you need to change are described in the comments), the `evaluate_speech_data` function expects one argument: directory path with the data for evaluation. There is also one optional argument to return probabilities instead of scores. The score is more precise because the best decision border was found for the data. However, the disadvantage of the decision boundary is perhaps a worse generalization.
 
-All the parameters are loaded from TXT files, which were created by training speech model.
+In a combined solution we use the probability option for speech evaluation.
 
 ## COMBINED
