@@ -1,7 +1,9 @@
 import os
 import numpy as np
 import pandas as pd
-from utilities import wav16khz2mfcc, logpdf_gmm
+from speech.utilities import wav16khz2mfcc, logpdf_gmm
+
+parent_dir = "speech/"
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
@@ -20,20 +22,20 @@ def evaluate_speech_data(dir_name, return_probabilities=False):
     files_names, test_data = wav16khz2mfcc(dir_name, print_file_info=False)
 
     # Load Ws_target and Ws_non_target
-    Ws_target = np.loadtxt('Ws_target.txt')
-    Ws_non_target = np.loadtxt('Ws_non_target.txt')
+    Ws_target = np.loadtxt(parent_dir + 'Ws_target.txt')
+    Ws_non_target = np.loadtxt(parent_dir + 'Ws_non_target.txt')
 
     # Load MUs_target and MUs_non_target
-    MUs_target = np.loadtxt('MUs_target.txt')
-    MUs_non_target = np.loadtxt('MUs_non_target.txt')
+    MUs_target = np.loadtxt(parent_dir + 'MUs_target.txt')
+    MUs_non_target = np.loadtxt(parent_dir + 'MUs_non_target.txt')
 
     # Load COVs_target and COVs_non_target
-    COVs_target = np.loadtxt('COVs_target.txt')
-    COVs_non_target = np.loadtxt('COVs_non_target.txt')
+    COVs_target = np.loadtxt(parent_dir + 'COVs_target.txt')
+    COVs_non_target = np.loadtxt(parent_dir + 'COVs_non_target.txt')
 
     # Load best decision border for evaluation parameters
     if not return_probabilities:
-        decision_border = np.loadtxt('border.txt')
+        decision_border = np.loadtxt(parent_dir + 'border.txt')
     else:
         decision_border = 0.5
 
@@ -67,12 +69,3 @@ def evaluate_speech_data(dir_name, return_probabilities=False):
     dfAudio["hardPredictionAudio"] = (dfAudio["softPredictionAudio"] > decision_border).astype(int)
 
     return dfAudio
-
-def main():
-    dir_name = '../data/target_dev'
-
-    # Get data frame with processed test data
-    dfAudio = evaluate_speech_data(dir_name, return_probabilities=True)
-    print(dfAudio)
-
-main()
