@@ -1,8 +1,9 @@
 import os
 import numpy as np
 import pandas as pd
-from speech.utilities import wav16khz2mfcc, logpdf_gmm
+from speech.utilities import wav16khz2mfcc, logpdf_gmm  # Change to 'utilities' instead of 'speech.utilities' when running from speech directory
 
+# Change this to empty string when running from speech directory
 parent_dir = "speech/"
 
 def sigmoid(x):
