@@ -1,4 +1,6 @@
 src/img/.venv/
+src/speech/.venv/
+src/.venv/
 .DS_Store
 __pycache__/
 /src/data/
