@@ -21,7 +21,7 @@ if __name__ == "__main__":
     # dfAudio = pd.DataFrame(dfImg['filename'])
     # dfAudio["softPredictionAudio"] = 0.5
     # dfAudio["hardPredictionAudio"] = 0
-    dfAudio = evaluate_speech_data(pathEval, return_probabilities=True)
+    dfAudio = evaluate_speech_data(dir_with_test_data, return_probabilities=True)
     # print(dfAudio.head())
     
     # Join predictions on filename
