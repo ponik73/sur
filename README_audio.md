@@ -106,7 +106,7 @@ Correctness is described in the weights distribution tables above (The scoring a
 
 | Score border | EM algorithm training iterations | Gausian mixture components | Average correctness |
 | :----------: | :------------------------------: | :------------------------: | :-----------------: |
-| -150         | 30                               | 15 for both                | 99.92%              |
+| -150         | 30                               | 15 for both                | 99.17%              |
 
 #### Average probability
 
