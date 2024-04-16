@@ -78,6 +78,7 @@ def simulate_run(score_borders, iterations, config):
                                     Ws_target, MUs_target, COVs_target, 
                                     Ws_non_target, MUs_non_target, COVs_non_target)
         
+        borders_correctness = []
         for border in score_borders:
             correct_targets = sum(1 for s in score_target if s > border)
             correct_non_targets = sum(1 for s in score_non_target if s < border)
@@ -86,7 +87,8 @@ def simulate_run(score_borders, iterations, config):
             crc_target = correct_targets / total_target * 100
             crc_non_target = correct_non_targets / total_non_target * 100
             crc_avg = (crc_target + crc_non_target) / 2
-            print("Border:", border,"avg correctness: {:.2f}".format(crc_avg))
+            borders_correctness.append(crc_avg)
+            # print("Border:", border,"avg correctness: {:.2f}".format(crc_avg))
             if crc_avg > max_avg_correctness:
                 print("Saving new training parameters with border:", border,"and new max avg correctness: {:.2f}".format(crc_avg))
                 # Save training parameters
@@ -99,6 +101,9 @@ def simulate_run(score_borders, iterations, config):
                 np.savetxt('border.txt', [border])
                 np.savetxt('max_avg_correctness.txt', [crc_avg])
                 max_avg_correctness = crc_avg
+        best_border_correctness = max(borders_correctness)
+        best_border_index = borders_correctness.index(best_border_correctness)
+        print("Best border from the iteration:", score_borders[best_border_index], " - {:.2f}".format(best_border_correctness))
         print()
 
 def main():
