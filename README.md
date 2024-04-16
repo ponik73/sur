@@ -164,7 +164,7 @@ Iteration: 90  Total log-likelihoods: -2314243.0034861485 for target; -17922917.
 
 The `TTL_target` value (-2314243.0034861485) is significantly higher (less negative) than the `TTL_non_target` value (-17922917.091317676), indicating that the model is much better at explaining the data from the target class compared to the non-target class.
 
-We see that there could be a reason to set the score border to a different number than 0. The model is better at recognizing when speech is the target, when it is not, it is a little prone to guessing that the input is the target. This information encourages us to push the boundary a little higher, but there is a risk of overtraining and worse generalization. Paradoxically, our best fit was with a threshold below 0.
+We see that there could be a reason to set the score border to a different number than 0. The model is better at recognizing when speech is the target, when it is not, it is a little prone to guessing that the input is the target. This information encourages us to push the boundary a little higher, but there is a risk of overtraining and worse generalization. Paradoxically, our [best fit](#score) was with a threshold below 0.
 
    3. After training parameters, we evaluate test data for both target and non-target data. The results we save to `score_CLASS` lists with scores for each data. Then we try to apply different borders to discover which can split the data most accurately. We log information about the target model correctness, the non-target model correctness, and the average correctness.
    4. We also remember the highest `max_avg_correctness` and if some border and parameters outperform the current maximum, we save these parameters into `.txt` files for evaluation. We also save that `border` and `max_avg_correctness` data into files, border for evaluation and maximum correctness for the next training.
@@ -184,7 +184,7 @@ Correctness is described in the weights distribution tables above (The scoring a
 
 | Score border | EM algorithm training iterations | Gausian mixture components | Average correctness |
 | :----------: | :------------------------------: | :------------------------: | :-----------------: |
-| -200         | 30                               | 15 for both                | 99.17%              |
+| -150         | 30                               | 15 for both                | 99.92%              |
 
 #### Average probability
 
