@@ -165,8 +165,12 @@ def wav16khz2mfcc(dir_name, augment=False, print_file_info=True):
             print('Processing file: ', f)
         rate, s = wavfile.read(f)
 
+        # Skip the first 1.5 seconds
+        s_skipped = s[int(rate * 1.5):]
+
         # Trim silence
-        s_trimmed, _ = librosa.effects.trim(s, top_db=10)
+        s_trimmed, _ = librosa.effects.trim(s_skipped, top_db=10)
+ 
         assert(rate == 16000)
         features[f] = mfcc(s_trimmed, 400, 240, 512, 16000, 23, 13)
         if augment:
