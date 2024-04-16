@@ -4,6 +4,12 @@ import scipy.linalg
 import numpy as np
 from numpy.random import randint
 import time
+import yaml
+
+def load_config(config_file):
+    with open(config_file, 'r') as f:
+        config = yaml.safe_load(f)
+    return config
 
 def calculate_test_score(ll_target, ll_non_target):
     return sum(ll_target) - sum(ll_non_target)
@@ -19,7 +25,7 @@ def evaluate_test_data(test_data,
         score.append(calculate_test_score(ll_target, ll_non_target))
     return score
 
-def simulate_run(score_borders, iterations):
+def simulate_run(score_borders, iterations, config):
     _, train_target = wav16khz2mfcc('../data/target_train', augment=True)
     _, train_non_target = wav16khz2mfcc('../data/non_target_train', augment=True)
     _, test_target = wav16khz2mfcc('../data/target_dev')
@@ -30,8 +36,8 @@ def simulate_run(score_borders, iterations):
 
     # Train and test with GMM models with diagonal covariance matrices
     # Decide for number of gaussian mixture components used for the target and non target models
-    M_target = 15
-    M_non_target = 15
+    M_target = config['M_target']
+    M_non_target = config['M_non_target']
 
     # Initialize all variance vectors (diagonals of the full covariance matrices) to
     # the same variance vector computed using all the data from the given class
@@ -53,7 +59,8 @@ def simulate_run(score_borders, iterations):
 
         start_time = time.time()
         # Run n iterations of EM agorithm to train the two GMMs from target and non target
-        for jj in range(30):
+        em_alg_iterations = config['EM_alg_iterations']
+        for jj in range(em_alg_iterations):
             [Ws_target, MUs_target, COVs_target, TTL_target] = train_gmm(train_target, Ws_target, MUs_target, COVs_target)
             [Ws_non_target, MUs_non_target, COVs_non_target, TTL_non_target] = train_gmm(train_non_target, Ws_non_target, MUs_non_target, COVs_non_target)
             if (jj+1) % 5 == 0:
@@ -95,11 +102,14 @@ def simulate_run(score_borders, iterations):
         print()
 
 def main():
-    # Try borders -400, -350, ... 700, 750
-    score_borders = list(range(-400, 800, 50))
+    config_file = '/home/dzuris/Documents/NMAL/2nd_sem/sur/sur_proj/src/speech/config_training.yaml'
+    config = load_config(config_file)
+
+    # Try borders -200, -150, ... 150, 200
+    score_borders = list(range(-200, 250, 50))
     
     # Run n iterations of simulation to get distinct correctnesses
-    num_iterations = 10
-    simulate_run(score_borders, num_iterations)
+    num_iterations = config['iterations']
+    simulate_run(score_borders, num_iterations, config)
 
 main()
