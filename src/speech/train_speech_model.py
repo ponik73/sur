@@ -103,7 +103,7 @@ def simulate_run(score_borders, iterations, config):
                 max_avg_correctness = crc_avg
         best_border_correctness = max(borders_correctness)
         best_border_index = borders_correctness.index(best_border_correctness)
-        print("Best border from the iteration:", score_borders[best_border_index], " - {:.2f}".format(best_border_correctness))
+        print("Best border from the iteration with avg correctness:", score_borders[best_border_index], "- {:.2f}%".format(best_border_correctness))
         print()
 
 def main():
