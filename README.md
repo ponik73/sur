@@ -18,6 +18,9 @@ DOKUMENTACE (3A4):
     - ktore techniky či rozhodnutia sa pozitivne prejavily na uspešnosti systemu
     - kompilacia kodov, spustenie, kde hľadať vysledne subory, inštalacia zavislosti
 
+Jakub:
+    - vytvorit v zlozke img/src/ strukturu pre augmentaciu
+    - odovzdat iba *.py, strukturu pre augmentaciu
 ## Spustenie
 
 Riešenie projektu sa skladá z troch častí.
