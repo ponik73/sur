@@ -10,7 +10,7 @@ import cv2
 EPOCHS = 20
 BATCH_SIZE = 20
 IMG_SIZE = 80
-PATH_EVAL = "eval"
+PATH_EVAL = "../../../../../Downloads/eval"
 PATH_MODEL = "one_person_detector.keras"
 PATH_OUTPUT = "../predictions/image.txt"
 

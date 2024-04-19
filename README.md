@@ -1,20 +1,46 @@
-# sur
+# SUR projekt
 
-[assignment](https://www.fit.vutbr.cz/study/courses/SUR/public/projekt_2023-2024/SUR_projekt2023-2024.txt)
+Autori: Jakub Kasem, Adam Dzurilla
 
-## Dependencies
+## TODO
+ODOVZDANIE: xkasem02_xdzuri00.zip
 
-To run project source code the installation of dependecies is required. The dependecies are listed in `src/requirements.txt`.
+    - combined.txt
+    - image_NN.txt
+    - audio_GMM.txt
+    - src/
+    - dokumentace.pdf
 
-To install these dependecies follow steps bellow.
+DOKUMENTACE (3A4):
 
-At `src` directory:
+    - popis riešení
+    - ako sme vyhodnocovali systemy počas vyvoja
+    - ktore techniky či rozhodnutia sa pozitivne prejavily na uspešnosti systemu
+    - kompilacia kodov, spustenie, kde hľadať vysledne subory, inštalacia zavislosti
 
-1. Create virtual env
+## Spustenie
+
+Riešenie projektu sa skladá z troch častí.
+
+- Detektor tváre (`src/img/`)
+- Detektor hlasu (`src/speech/`)
+- Kombinovaný detektor (`src/combined.py`)
+
+Každú z týchto častí je možné samostatne spúšťať.
+
+Pred spustením riešenia projektu je potrebná inštalácia závislostí, ktoré sú vypísané v súbore `src/requirements.txt`. Odporúčame vytvoriť *virtual environment*.
+
+Pred samotným spustením riešenia je potrebné v skripte `src/combined.py` upraviť objekt `DATA_DIR` na cestu k evaluačným dátam. Taktiež je potrebné zo zložky `src/img` spustiť skript `augmentData.py`, bez ktorého by nebola možná klasifikácia tvárí.
+
+Vytvorenie virtual environment a inštalácia závislostí:
+
+V `src` zložke:
+
+1. Vytvorenie virtual env
 ```
 python3 -m venv .venv
 ```
-2. Activate virtual env
+2. Aktivácia virtual env
 
 Unix:
 ```
@@ -24,57 +50,42 @@ Windows:
 ```
 .venv\Scripts\activate
 ```
-3. Install requirements
+
+3. Inštalácia závislostí
 ```
 python3 -m pip install -r requirements.txt
 ```
 
-#### Image model
-
-If you are running any evaluation regarding images for the first time, it is necessary to train the image model. Before training model it is necessary to generate augmented data and structure it. To do so:
-
-1. Go to `src/img` directory
-2. Run script generating augmented data:
-```
-python3 augmentData.py
-```
-
-## Usage
-
-Prediction - detection of target person.
-
-Place data that on which predictions will be made at `TODO` directory (in `.png` and `.wav` format).
-
-Run:
+4. Vyhodnotenie súborov
 ```
 python3 combined.py
 ```
 
-This script produce prediction `.txt` files into `src/predictions` directory.
+Výsledné súbory sú generované do repozitára `src/predictions`.
 
-- `combined.txt` contains predictions made on simultaneously `.png` and `.wav` data produced via both speech model and image model
-- `image.txt` contains predictions made on `.png` data made via image model
-- `speech.txt` contains predictions made on `.wav` data made via speech model
+## Detektor tváre
 
-### Image
+Systém, ktorý klasifikuje tváre je implementovaný v jazyku Python ako konvolučná neuronová sieť pomocou rozhrania Keras v knižnici Tensorflow.
 
-To predict only `.png` files run:
-```
-python3 img/image_NN.py
-```
+### Popis systému
 
-This script produce prediction `image.txt` file (see above).
+Architektúra neuronovej siete:
 
-### Speech
+- Konvolučná vrstva - 32 filtrov, 3x3 kernel
+- Relu aktivácia, 2x2 maxpooling
+- Konvolučná vrstva - 32 filtrov, 3x3 kernel
+- Relu aktivácia, 2x2 maxpooling
+- Konvolučná vrstva - 64 filtrov, 3x3 kernel
+- Relu aktivácia, 2x2 maxpooling
+- Plne prepojená vrstva - 64 neurónov
+- Relu aktivácia, 0.5 dropout
+- Výstup siete, sigmoid aktivácia
 
-To predict only `.wav` files run:
-```
-python3 speech/evaluate.py
-```
+### Techniky a vyhodnocovanie systému
 
-### TODO: This script produce prediction `speech.txt` file (see above).
+Počas vývoja som experimentoval s pridávaním/odstraňovaním vrstiev a ich modifikáciou. Taktiež som experimentoval s rôznymi *optimizers*, počtom epoch a počtom *batches*. Prikláňal som sa k riešeniam, ktoré na vybranom počte epoch najlepšie konvergovali a nemali moc (relatívne) veľký rozdiel medzi trénovacou presnosťou a validačnou presnosťou, aby sa predišlo *overfitting*.
 
-##### TODO: Img solution summary
+Pred samotným experimentovaním som obohatil zadané dáta o augmentácie a to pomocou skriptu `src/img/augmentData.py`. Augmentácia dát sa veľmi pozitívne podpísala na úspešnosti modelov.
 
 ## SPEECH
 
@@ -308,5 +319,3 @@ We added new augmented data with different stretch speeds. As we can see, we use
 Speech data evaluation can be called only from the parent directory (running only speech evaluation is possible, but you need to change two things in the `src/speech/evaluate.py` file, the two things you need to change are described in the comments), the `evaluate_speech_data` function expects one argument: directory path with the data for evaluation. There is also one optional argument to return probabilities instead of scores. The score is more precise because the best decision border was found for the data. However, the disadvantage of the decision boundary is perhaps a worse generalization.
 
 In a combined solution we use the probability option for speech evaluation.
-
-## COMBINED

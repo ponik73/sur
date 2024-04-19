@@ -3,21 +3,21 @@ from speech.evaluate import evaluate_speech_data
 import pandas as pd
 import os
 
+DATA_DIR = "../../../../../../Downloads/eval"
+
 if __name__ == "__main__":
-    # Test data directory
-    dir_with_test_data = "data/non_target_dev"
 
     # Img
     pathModel = "img/one_person_detector.keras"
-    pathEval = "img/eval"
+    pathEval = DATA_DIR
     dfImg = evaluate(pathModel, pathEval)
     dfImg = dfImg.rename(columns={"softPrediction": "softPredictionImg", "hardPrediction": "hardPredictionImg"})
 
     # Audio
-    dfAudio = evaluate_speech_data(dir_with_test_data, return_probabilities=True)
+    dfAudio = evaluate_speech_data(DATA_DIR, return_probabilities=True)
     
     # Join predictions on filename
-    combinedPrediction = pd.merge(dfImg, dfAudio, on="filename")
+    combinedPrediction = pd.merge(dfAudio, dfImg, on="filename")
     
     # Evaluate soft prediction
     combinedPrediction["softPrediction"] = combinedPrediction["softPredictionImg"]*0.5 + combinedPrediction["softPredictionAudio"]*0.5
@@ -33,13 +33,13 @@ if __name__ == "__main__":
             f.write(s.encode("ascii"))
 
     # Write out image prediction summary
-    with open("predictions/image.txt", "wb") as f:
+    with open("predictions/image_NN.txt", "wb") as f:
         for _, row in combinedPrediction.iterrows():
             s = f'{row.iloc[0]} {row.iloc[1]} {int(row.iloc[2])}\n'
             f.write(s.encode("ascii"))
 
     # Write out speech prediction summary
-    with open("predictions/speech.txt", "wb") as f:
+    with open("predictions/audio_GMM.txt", "wb") as f:
         for _, row in combinedPrediction.iterrows():
             s = f'{row.iloc[0]} {row.iloc[3]} {int(row.iloc[4])}\n'
             f.write(s.encode("ascii"))
