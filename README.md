@@ -19,7 +19,6 @@ DOKUMENTACE (3A4):
     - kompilacia kodov, spustenie, kde hľadať vysledne subory, inštalacia zavislosti
 
 Jakub:
-    - vytvorit v zlozke img/src/ strukturu pre augmentaciu
     - odovzdat iba *.py, strukturu pre augmentaciu
 ## Spustenie
 
