@@ -32,13 +32,13 @@ def loadData(batchSize, imgSize):
     datagen = ImageDataGenerator(rescale=1./255)
 
     train_generator = datagen.flow_from_directory(
-            'data/train', 
+            'img/data/train', 
             target_size=(imgSize, imgSize),
             batch_size=batchSize,
             class_mode='binary')
 
     validation_generator = datagen.flow_from_directory(
-            'data/validation',
+            'img/data/validation',
             target_size=(imgSize, imgSize),
             batch_size=batchSize,
             class_mode='binary')
