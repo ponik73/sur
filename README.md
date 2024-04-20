@@ -2,24 +2,6 @@
 
 Autori: Jakub Kasem, Adam Dzurilla
 
-## TODO
-ODOVZDANIE: xkasem02_xdzuri00.zip
-
-    - combined.txt
-    - image_NN.txt
-    - audio_GMM.txt
-    - src/
-    - dokumentace.pdf
-
-DOKUMENTACE (3A4):
-
-    - popis riešení
-    - ako sme vyhodnocovali systemy počas vyvoja
-    - ktore techniky či rozhodnutia sa pozitivne prejavily na uspešnosti systemu
-    - kompilacia kodov, spustenie, kde hľadať vysledne subory, inštalacia zavislosti
-
-Jakub:
-    - odovzdat iba *.py, strukturu pre augmentaciu
 ## Spustenie
 
 Riešenie projektu sa skladá z troch častí.
@@ -119,7 +101,7 @@ Running evaluation:
 python3 evaluate.py
 ```
 
-If you want to run an evaluation, first you need to change `speech.utilities` import and `parent_dir` variable as described in the comment.
+If you want to run an evaluation, first you need to change `speech.utilities` import and `parent_dir` variable as described in the comments.
 
 ### Train speech model code
 
@@ -247,77 +229,16 @@ This is because in every .wav file there is probability somewhere around 0.99 th
 
 ### Data augmentation
 
-We implemented data augmentation for training data, the code is provided below:
-
-```python
-def augment_audio(wav_data, augmentation_factor):
-    """
-    Augment audio data by time stretching
-    """
-    wav_data_float = librosa.util.buf_to_float(wav_data)
-    augmented_data = librosa.effects.time_stretch(wav_data_float, rate=augmentation_factor)
-    return augmented_data
-
-def augment_add_random_noise(wav_data, noise_level=0.01):
-    """
-    Add random noise to audio data.
-
-    Parameters:
-    - wav_data: NumPy array representing the audio signal.
-    - noise_level: Magnitude of the random noise (default is 0.01)
-
-    Returns:
-    - Noisy audio signal as a NumPy array.
-    """
-    # Generate random noise with the same length as the audio signal
-    noise = noise_level * np.random.rand(len(wav_data))
-
-    # Add the noise to the audio signal
-    noisy_audio = wav_data + noise
-
-    return noisy_audio
-
-def wav16khz2mfcc(dir_name, augment=False, print_file_info=True):
-    """
-    Loads all *.wav files from directory dir_name (must be 16KHz), converts them into MFCC
-    features (13 coefficients) and stores them into a directory. Keys are the file names
-    and values and 2D numpy arrays of MFCC features.
-    """
-    features = {}
-    for f in glob(dir_name + '/*.wav'):
-        if print_file_info:
-            print('Processing file: ', f)
-        rate, s = wavfile.read(f)
-
-        # Skip the first 1.5 seconds
-        s_skipped = s[int(rate * 1.5):]
-
-        # Trim silence
-        s_trimmed, _ = librosa.effects.trim(s_skipped, top_db=10)
- 
-        assert(rate == 16000)
-        features[f] = mfcc(s_trimmed, 400, 240, 512, 16000, 23, 13)
-        if augment:
-            # Data augmentation
-            stretch_speeds = [0.5, 0.8, 1.2, 1.5, 2.0]
-            for index, speed in enumerate(stretch_speeds):
-                augmented_data = augment_audio(s, speed)
-                augmented_features = mfcc(augmented_data, 400, 240, 512, 16000, 23, 13)
-                augmented_key = f.replace('.wav', '_augmented_stretch_speed_' + str(index) + '.wav')
-                features[augmented_key] = augmented_features
-            augmented_noisy_data = augment_add_random_noise(s)
-            augmented_noisy_features = mfcc(augmented_noisy_data, 400, 240, 512, 16000, 23, 13)
-            augmented_noisy_key = f.replace('.wav', '_augmented_random_noise.wav')
-            features[augmented_noisy_key] = augmented_noisy_features
-    return list(features.keys()), list(features.values())
-```
+We implemented data augmentation for training data, you can find the code for data augmentation in `speech/utilities.py` in functions `augment_audio`, `augment_add_random_noise` and `wav16khz2mfcc` where the augmentation is called.
 
 In the beginning, the results were bad, the correctness of non-target data dropped to somewhere around 50-60%. We solved this by increasing the `M_target` and `M_non_target` Gaussian mixture components used for the target and non-target models. It had a negative impact on the training time of the model, but the average correctness percentage between the target and non-target data went back to 90%+.
 
 We added new augmented data with different stretch speeds. As we can see, we used 5 different stretch speeds for augmentation and we also created an augmented audio file with noise. So instead of having 20 target data and 132 non-target data, we have 140 target data and 924 non-target data.
 
+In the end the data augmentation ended increasing the model correctness by around 5%.
+
 ### Evaluate data
 
 Speech data evaluation can be called only from the parent directory (running only speech evaluation is possible, but you need to change two things in the `src/speech/evaluate.py` file, the two things you need to change are described in the comments), the `evaluate_speech_data` function expects one argument: directory path with the data for evaluation. There is also one optional argument to return probabilities instead of scores. The score is more precise because the best decision border was found for the data. However, the disadvantage of the decision boundary is perhaps a worse generalization.
 
-In a combined solution we use the probability option for speech evaluation.
+In a combined solution we use the probability option for speech evaluation. Also for only speech data we used rather only percentage to avoid problems with generalization when the border is moved away from zero.
