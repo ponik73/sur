@@ -1,0 +1,18 @@
+## TODO
+ODOVZDANIE: xkasem02_xdzuri00.zip
+
+    - combined.txt
+    - image_NN.txt
+    - audio_GMM.txt
+    - src/
+    - dokumentace.pdf
+
+DOKUMENTACE (3A4):
+
+    - popis riešení
+    - ako sme vyhodnocovali systemy počas vyvoja
+    - ktore techniky či rozhodnutia sa pozitivne prejavily na uspešnosti systemu
+    - kompilacia kodov, spustenie, kde hľadať vysledne subory, inštalacia zavislosti
+
+Jakub:
+    - odovzdat iba *.py, strukturu pre augmentaciu
