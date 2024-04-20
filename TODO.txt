@@ -13,6 +13,3 @@ DOKUMENTACE (3A4):
     - ako sme vyhodnocovali systemy počas vyvoja
     - ktore techniky či rozhodnutia sa pozitivne prejavily na uspešnosti systemu
     - kompilacia kodov, spustenie, kde hľadať vysledne subory, inštalacia zavislosti
-
-Jakub:
-    - odovzdat iba *.py, strukturu pre augmentaciu

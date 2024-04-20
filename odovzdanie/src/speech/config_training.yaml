@@ -1,0 +1,4 @@
+M_target: 15
+M_non_target: 15
+iterations: 10
+EM_alg_iterations: 30
